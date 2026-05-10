@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>FIT 2.0 AI Analyser</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-start: #d6e8f7;
+    --bg-end: #e8f1fa;
+    --bg: linear-gradient(135deg, var(--bg-start), var(--bg-end));
+    --card: rgba(255,255,255,0.88);
+    --card-border: rgba(140,180,220,0.25);
+    --text: #1a1d23;
+    --text-secondary: #4e5b6e;
+    --text-tertiary: #8a97a8;
+    --accent: #3b82c4;
+    --accent-light: #5b9ad0;
+    --accent-dim: #2a5f8f;
+    --accent-subtle: rgba(59,130,196,0.08);
+    --green: #38b87a;
+    --green-bg: rgba(56,184,122,0.12);
+    --orange: #e88934;
+    --orange-bg: rgba(232,137,52,0.14);
+    --red: #d64f4a;
+    --red-bg: rgba(214,79,74,0.10);
+    --shadow: 0 2px 24px rgba(40,80,130,0.08);
+    --radius: 16px;
+    --radius-lg: 20px;
+    --tab-height: 64px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: var(--bg-start);
+    background: var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  .app-container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+    overflow: hidden;
+  }
+  .screen-container {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    padding: 16px 16px calc(var(--tab-height) + var(--safe-bottom) + 12px) 16px;
+  }
+  .screen-container::-webkit-scrollbar { display: none; }
+
+  /* Tab bar */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    height: calc(var(--tab-height) + var(--safe-bottom));
+    padding-bottom: var(--safe-bottom);
+    background: rgba(235,245,255,0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid rgba(59,130,196,0.12);
+    display: flex;
+    align-items: stretch;
+    z-index: 100;
+  }
+  .tab-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    background: none;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 0;
+    transition: color 0.15s;
+    letter-spacing: 0.01em;
+  }
+  .tab-item svg { display: block; }
+  .tab-item.active { color: var(--accent); }
+  .tab-item.active svg { filter: drop-shadow(0 0 4px rgba(59,130,196,0.3)); }
+  .tab-item-label { margin-top: 1px; }
+
+  /* Screens */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+    border: 0.5px solid var(--card-border);
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light), rgba(59,130,196,0.3));
+    opacity: 0.6;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--accent-dim);
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  /* Typography */
+  .display-large {
+    font-size: 42px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+  .display-medium {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .headline { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .subhead { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
+  .caption { font-size: 13px; color: var(--text-secondary); }
+  .caption-small { font-size: 12px; color: var(--text-tertiary); }
+
+  /* Badges */
+  .risk-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 14px;
+    border-radius: 100px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+  }
+  .risk-badge.low { background: var(--green-bg); color: #1f8a4e; }
+  .risk-badge.medium { background: var(--orange-bg); color: #a85d00; }
+  .risk-badge.high { background: var(--red-bg); color: #b83a36; }
+  .risk-badge.invalid { background: rgba(138,151,168,0.2); color: var(--text-secondary); }
+
+  /* Labels */
+  .label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 0.5px solid rgba(0,0,0,0.05);
+  }
+  .label-row:last-child { border-bottom: none; }
+  .label-key { font-size: 15px; color: var(--text-secondary); }
+  .label-value { font-size: 15px; font-weight: 500; text-align: right; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 14px 20px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 0.15s;
+  }
+  .btn:active { opacity: 0.7; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-light)); color: #fff; box-shadow: 0 2px 12px rgba(59,130,196,0.25); }
+  .btn-secondary { background: var(--accent-subtle); color: var(--accent); }
+  .btn-danger { background: var(--red-bg); color: var(--red); }
+  .btn-row { display: flex; gap: 10px; margin-top: 14px; }
+  .btn-row .btn { flex: 1; }
+
+  /* Form */
+  .form-group { margin-bottom: 16px; }
+  .form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+    letter-spacing: -0.01em;
+  }
+  .form-input, .form-select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 0.5px solid var(--card-border);
+    background: rgba(255,255,255,0.7);
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .form-input:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,196,0.1); }
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236c6c70' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+  }
+  .form-row { display: flex; gap: 10px; }
+  .form-row .form-group { flex: 1; }
+
+  /* Strip grid */
+  .strip-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .strip-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 6px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.5);
+    border: 0.5px solid var(--card-border);
+  }
+  .strip-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 5px; text-align: center; word-break: break-word; }
+  .strip-controls { display: flex; gap: 3px; }
+  .strip-btn {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: 0.5px solid rgba(0,0,0,0.1);
+    background: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .strip-btn.selected {
+    background: linear-gradient(135deg, var(--accent), var(--accent-light));
+    color: #fff;
+    border-color: var(--accent);
+    box-shadow: 0 1px 6px rgba(59,130,196,0.25);
+  }
+  .strip-btn:active { transform: scale(0.92); }
+
+  @media (max-width: 400px) {
+    .strip-grid { gap: 5px; }
+    .strip-item { padding: 8px 4px; }
+    .strip-btn { width: 28px; height: 30px; font-size: 12px; }
+    .strip-controls { gap: 2px; }
+    .strip-label { font-size: 11px; }
+  }
+
+  /* Disclaimer */
+  .disclaimer {
+    background: linear-gradient(135deg, rgba(59,130,196,0.06), rgba(91,154,208,0.03));
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.45;
+    margin-top: 8px;
+    border: 0.5px solid rgba(59,130,196,0.1);
+  }
+  .disclaimer strong { font-weight: 600; }
+
+  /* Score block */
+  .score-block {
+    text-align: center;
+    padding: 16px 0;
+  }
+  .score-block .probability { font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1; }
+  .score-block .band { margin-top: 10px; }
+  .score-block .sub { font-size: 14px; color: var(--text-secondary); margin-top: 6px; }
+
+  /* History list */
+  .history-item {
+    padding: 14px 16px;
+    border-bottom: 0.5px solid rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: background 0.1s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .history-item:active { background: rgba(0,0,0,0.02); }
+  .history-item:last-child { border-bottom: none; }
+  .history-item-top { display: flex; justify-content: space-between; align-items: center; }
+  .history-date { font-size: 13px; color: var(--text-tertiary); }
+  .history-score { font-size: 17px; font-weight: 600; }
+  .history-detail { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* AI insights */
+  .insight-section { margin-bottom: 16px; }
+  .insight-section h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; color: var(--accent-dim); }
+  .insight-section p { font-size: 14px; color: var(--text-secondary); line-height: 1.55; }
+
+  /* Tab icons */
+  .tab-item svg { width: 24px; height: 24px; }
+
+  /* Utility */
+  .mt-8 { margin-top: 8px; }
+  .mt-14 { margin-top: 14px; }
+  .mb-14 { margin-bottom: 14px; }
+  .text-center { text-align: center; }
+  .text-secondary { color: var(--text-secondary); }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; }
+  .gap-4 { gap: 4px; }
+  .gap-8 { gap: 8px; }
+  .fw-600 { font-weight: 600; }
+  .fs-14 { font-size: 14px; }
+  .fs-13 { font-size: 13px; }
+
+  /* Toggle */
+  .toggle-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+  }
+  .toggle-label { font-size: 15px; color: var(--text); }
+  .toggle {
+    width: 48px; height: 30px;
+    border-radius: 15px;
+    background: #e5e5ea;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .toggle.on { background: var(--green); }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    transition: transform 0.2s;
+  }
+  .toggle.on::after { transform: translateX(18px); }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text-tertiary);
+  }
+  .empty-state svg { margin-bottom: 12px; opacity: 0.5; }
+
+  .status-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+  .status-dot.valid { background: var(--green); }
+  .status-dot.invalid { background: var(--red); }
+
+  .screen-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    padding-top: 8px;
+    background: linear-gradient(135deg, rgba(59,130,196,0.06), rgba(91,154,208,0.03));
+    border-radius: var(--radius-lg);
+    border: 0.5px solid rgba(59,130,196,0.1);
+  }
+  .screen-header h2 { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; color: var(--accent-dim); }
+  .screen-header .subtitle { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* Lang toggle */
+  .lang-toggle {
+    display: flex;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 0.5px solid var(--card-border);
+    background: rgba(255,255,255,0.6);
+    flex-shrink: 0;
+  }
+  .lang-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    border: none;
+    background: transparent;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    transition: all 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .lang-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* BMI Modal */
+  .bmi-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.35);
+    z-index: 200;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+  }
+  .bmi-overlay.show { display: flex; }
+  .bmi-modal {
+    background: #fff;
+    border-radius: 20px;
+    padding: 24px;
+    width: 100%;
+    max-width: 340px;
+    max-height: 90vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    animation: bmiFadeIn 0.2s ease;
+  }
+  @keyframes bmiFadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+  .bmi-modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+  .bmi-modal .bmi-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+  .bmi-modal .form-group { margin-bottom: 12px; }
+  .bmi-modal .form-group:last-of-type { margin-bottom: 16px; }
+  .bmi-modal .form-label { font-size: 13px; }
+  .bmi-modal .form-input { background: rgba(0,0,0,0.02); }
+  .bmi-result {
+    text-align: center;
+    padding: 12px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    display: none;
+  }
+  .bmi-result.show { display: block; }
+  .bmi-result .bmi-number { font-size: 28px; font-weight: 700; color: var(--accent-dim); }
+  .bmi-modal .btn-row { gap: 8px; }
+</style>
+</head>
+<body>
+<div class="app-container" id="app">
+  <div class="screen-container" id="screenContainer">
+    <!-- Home -->
+    <div class="screen active" id="screenHome">
+      <div class="screen-header">
+        <div>
+          <h2 id="homeTitle">FIT 2.0 AI Analyser</h2>
+          <div class="subtitle" id="homeSubtitle">Screening Support Prototype</div>
+        </div>
+        <div class="lang-toggle">
+          <button class="lang-btn active" data-lang="en">EN</button>
+          <button class="lang-btn" data-lang="tc">中文</button>
+        </div>
+      </div>
+      <div id="homeSummary"></div>
+      <div class="card" id="homeAboutCard">
+        <div class="card-title" id="homeAboutTitle">About This Tool</div>
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;" id="homeAboutDesc">
+        This prototype combines stool-based biomarker strip signals with clinical risk factors to
+        provide a screening support probability. It is designed for research and development
+        purposes only.
+        </p>
+      </div>
+      <div class="card" id="homeHowCard">
+        <div class="card-title" id="homeHowTitle">How It Works</div>
+        <p style="font-size:14px;color:var(--text-secondary);line-height:1.6;margin-bottom:8px;" id="homeHowSteps">
+        <strong style="color:var(--text);">1.</strong> Complete your clinical profile<br>
+        <strong style="color:var(--text);">2.</strong> Record the 8 strip marker values from the assay<br>
+        <strong style="color:var(--text);">3.</strong> View the combined risk assessment
+        </p>
+      </div>
+      <div style="text-align:center;margin:20px 0;">
+        <button class="btn btn-primary" id="homeScanBtn" style="width:auto;padding:16px 36px;font-size:17px;border-radius:16px;display:inline-flex;gap:8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5L5 21"/></svg>
+          Start Scanning
+        </button>
+      </div>
+      <div class="card" id="homePrivacyCard" style="background:rgba(59,130,196,0.06);border:1px solid rgba(59,130,196,0.15);margin-bottom:12px;">
+        <div class="card-title" id="homePrivacyTitle" style="font-size:14px;">Privacy</div>
+        <p style="font-size:13px;color:var(--text-secondary);line-height:1.5;" id="homePrivacyText">
+        We value your privacy. This app runs entirely on your device — your data is never stored on our servers and will never be used for studies without your explicit consent.
+        </p>
+      </div>
+      <div class="disclaimer" id="homeDisclaimer">
+        <strong id="homeDiscLabel">Medical Disclaimer:</strong> <span id="homeDiscText">This tool is for screening support only and does not diagnose colorectal cancer. Users with concerning results or symptoms should seek professional medical evaluation.</span>
+      </div>
+    </div>
+
+    <!-- Scan -->
+    <div class="screen" id="screenScan">
+      <div class="screen-header">
+        <h2 id="scanTitle">Scan</h2>
+      </div>
+      <div class="card">
+        <div class="card-title" id="scanStripTitle">Strip Markers</div>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;" id="scanStripDesc">
+        Enter each marker value (0–3) from the assay strip.
+        </p>
+        <div class="strip-grid" id="stripGrid"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+        <button class="btn btn-secondary" id="scanCameraBtn" style="width:100%;padding:14px 16px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:14px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <span id="scanCameraLabel">Scan Strip</span>
+        </button>
+        <button class="btn btn-primary" id="scanRunBtn" style="width:100%;">Calculate Risk</button>
+      </div>
+      <div class="disclaimer" id="scanDisclaimer" style="margin-top:14px;">
+        <strong id="scanDiscLabel">Note:</strong> <span id="scanDiscText">This app demonstrates how the application functions. This page is designed for scanning with a camera on a phone, not for manual data entry.</span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="screen" id="screenResults">
+      <div class="screen-header">
+        <h2 id="resultsTitle">Results</h2>
+      </div>
+      <div id="resultsContent"></div>
+    </div>
+
+    <!-- AI Insights -->
+    <div class="screen" id="screenInsights">
+      <div class="screen-header">
+        <h2 id="insightsTitle">AI Insights</h2>
+      </div>
+      <div id="insightsContent" style="padding-bottom: 60px;"></div>
+    </div>
+
+    <!-- Profile -->
+    <div class="screen" id="screenProfile">
+      <div class="screen-header">
+        <h2 id="profileTitle">Profile</h2>
+      </div>
+      <div class="card">
+        <div class="card-title" id="profileClinInfo">Clinical Information</div>
+        <div id="profileForm"></div>
+        <button class="btn btn-primary mt-8" id="profileSaveBtn">Save Profile</button>
+      </div>
+      <button class="btn btn-secondary" id="profileClearBtn">Reset to Defaults</button>
+    </div>
+
+    <!-- History -->
+    <div class="screen" id="screenHistory">
+      <div class="screen-header">
+        <h2 id="historyTitle">History</h2>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- BMI Calculator Modal -->
+  <div class="bmi-overlay" id="bmiOverlay">
+    <div class="bmi-modal">
+      <h3>BMI</h3>
+      <div class="bmi-sub">Weight (kg) ÷ Height (m)²</div>
+      <div class="bmi-result" id="bmiResult">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:2px;">Your BMI</div>
+        <div class="bmi-number" id="bmiResultNumber">—</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Weight</label>
+        <input class="form-input" type="number" id="bmiWeight" placeholder="kg" min="20" max="300" step="0.1">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Height</label>
+        <input class="form-input" type="number" id="bmiHeight" placeholder="metres" min="0.5" max="2.5" step="0.01">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="bmiApplyBtn">Apply</button>
+        <button class="btn btn-secondary" id="bmiCancelBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Camera Scanner Modal -->
+  <div class="bmi-overlay" id="cameraOverlay">
+    <div class="bmi-modal" style="max-width:380px;">
+      <h3 id="camTitle">Scan Test Strip</h3>
+      <div class="bmi-sub" id="camSub">Position the test strip window within the guide and tap Capture.</div>
+      <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;">
+        <video id="camVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
+        <div id="camPlaceholder" style="color:#888;font-size:14px;text-align:center;padding:20px;">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <p style="margin-top:8px;" id="camPlaceholderText">Camera loading...</p>
+        </div>
+        <!-- ROI Guide Overlay -->
+        <div id="camGuide" style="position:absolute;inset:0;display:none;pointer-events:none;">
+          <div style="position:absolute;left:10%;right:10%;top:15%;bottom:20%;border:2px dashed rgba(255,255,255,0.6);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,0.3);"></div>
+          <div style="position:absolute;top:8%;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;" id="camGuideLabel">Position test strip in the frame</div>
+        </div>
+      </div>
+      <!-- Results after capture -->
+      <div id="camResult" style="display:none;">
+        <div id="camProcessing" style="text-align:center;padding:12px;font-size:14px;color:var(--text-secondary);">Analyzing strip...</div>
+        <div id="camDetectedVals" style="display:none;background:rgba(59,130,196,0.06);border-radius:10px;padding:12px;margin-bottom:12px;">
+          <p style="font-size:13px;font-weight:600;margin-bottom:6px;" id="camDetectedTitle">Detected Values</p>
+          <div id="camDetectedList"></div>
+          <p style="font-size:12px;color:var(--text-tertiary);margin-top:6px;" id="camDetectedNote">Review values before accepting. Adjust manually if needed.</p>
+        </div>
+        <div id="camNotDetected" style="display:none;background:rgba(214,79,74,0.08);border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">
+          <p style="font-size:14px;font-weight:600;color:#b83a36;" id="camResultText">No test lines detected.</p>
+          <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;" id="camResultSub">Try aligning the strip more carefully or adjust lighting.</p>
+        </div>
+      </div>
+      <div class="btn-row" id="camBtnRow">
+        <button class="btn btn-secondary" id="camCaptureBtn" style="display:none;">Capture</button>
+        <button class="btn btn-secondary" id="camUploadBtn">Upload Photo</button>
+        <button class="btn btn-secondary" id="camCloseBtn">Close Camera</button>
+      </div>
+      <div class="btn-row" id="camAcceptRow" style="display:none;">
+        <button class="btn btn-primary" id="camAcceptBtn" style="flex:1;">Use Detected Values</button>
+        <button class="btn btn-secondary" id="camRetakeBtn">Retake</button>
+      </div>
+      <input type="file" accept="image/*" id="camFileInput" style="display:none;">
+    </div>
+  </div>
+
+  <!-- Tab Bar -->
+  <nav class="tab-bar" id="tabBar">
+    <button class="tab-item active" data-tab="Home">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="tab-item-label">Home</span>
+    </button>
+    <button class="tab-item" data-tab="Scan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5L5 21"/></svg>
+      <span class="tab-item-label">Scan</span>
+    </button>
+    <button class="tab-item" data-tab="Results">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      <span class="tab-item-label">Results</span>
+    </button>
+    <button class="tab-item" data-tab="Insights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+      <span class="tab-item-label">Insights</span>
+    </button>
+    <button class="tab-item" data-tab="Profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      <span class="tab-item-label">Profile</span>
+    </button>
+    <button class="tab-item" data-tab="History">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="tab-item-label">History</span>
+    </button>
+  </nav>
+</div>
+
+<script>
+// ===== CORE MATH =====
+function clamp(x, lo, hi) {
+  return Math.max(lo, Math.min(hi, x));
+}
+function logistic(x) {
+  return 1 / (1 + Math.exp(-x));
+}
+function normalizePair(a, b) {
+  const ratio = (a + 0.5) / (b + 0.5);
+  const raw = Math.min(Math.max((ratio - 0.5) / 1.5, 0), 1);
+  return raw * 100;
+}
+
+// ===== TEST SCORE =====
+function computeTestScore(testBands) {
+  const L1 = normalizePair(testBands.L1a, testBands.L1b);
+  const L2 = normalizePair(testBands.L2a, testBands.L2b);
+  const L3 = normalizePair(testBands.L3a, testBands.L3b);
+  let testScore = 0.50 * L1 + 0.30 * L2 + 0.20 * L3;
+  let valid = true;
+  let invalidReason = "";
+  let adequacyNote = t("adequateSample");
+  if (testBands.L4a === 0 || testBands.L4b === 0) {
+    valid = false;
+    invalidReason = t("invalidResult");
+    adequacyNote = t("invalidSample");
+  } else if (testBands.L4a === 1 || testBands.L4b === 1) {
+    testScore = testScore * 0.85;
+    adequacyNote = t("weakAdeq");
+  }
+  return { valid, invalidReason, adequacyNote, L1, L2, L3, testScore };
+}
+
+// ===== USER RISK =====
+function scoreFamilyGenetics(user) {
+  let s = 0;
+  if (user.familyHistoryCRC === "first-degree") s += 45;
+  else if (user.familyHistoryCRC === "multiple-relatives") s += 65;
+  else if (user.familyHistoryCRC === "second-degree") s += 15;
+  if (["lynch", "fap", "other"].includes(user.hereditarySyndrome) && user.hereditarySyndrome !== "none") s += 35;
+  return clamp(s, 0, 100);
+}
+function scoreAgeSex(user) {
+  let s = 0;
+  const age = Number(user.age || 0);
+  if (age >= 60) s += 70;
+  else if (age >= 50) s += 50;
+  else if (age >= 40) s += 25;
+  if (user.sex === "male") s += 10;
+  return clamp(s, 0, 100);
+}
+function scoreBowelHistory(user) {
+  let s = 0;
+  if (user.ibd === true) s += 70;
+  return clamp(s, 0, 100);
+}
+function scoreHabits(user) {
+  let s = 0;
+  if (user.smoking === "current") s += 25;
+  else if (user.smoking === "former") s += 10;
+  const bmi = Number(user.bmi || 0);
+  if (bmi >= 30) s += 20;
+  else if (bmi >= 25) s += 10;
+  if (user.activity === "low") s += 15;
+  if (user.alcohol === "high") s += 10;
+  if (user.redProcessedMeat === "high") s += 20;
+  else if (user.redProcessedMeat === "medium") s += 10;
+  if (Number(user.dietQuality || 3) >= 4) s -= 10;
+  return clamp(s, 0, 100);
+}
+function computeUserScore(user) {
+  const F = scoreFamilyGenetics(user);
+  const A = scoreAgeSex(user);
+  const B = scoreBowelHistory(user);
+  const H = scoreHabits(user);
+  const userScore = 0.40 * F + 0.25 * A + 0.20 * B + 0.15 * H;
+  return { F, A, B, H, userScore };
+}
+
+// ===== FINAL =====
+function computeFinalProbability(userProfile, testBands) {
+  const testPart = computeTestScore(testBands);
+  const userPart = computeUserScore(userProfile);
+  if (!testPart.valid) {
+    return {
+      valid: false,
+      invalidReason: testPart.invalidReason,
+      adequacyNote: testPart.adequacyNote,
+      lineScores: { hemoglobin: testPart.L1, fusobacterium: testPart.L2, etbf: testPart.L3 },
+      familyGeneticsScore: userPart.F,
+      ageSexScore: userPart.A,
+      bowelHistoryScore: userPart.B,
+      habitsScore: userPart.H,
+      testScore: testPart.testScore,
+      userScore: userPart.userScore,
+      combinedScore: null,
+      probability: null,
+      probabilityPercent: null,
+      riskBand: "INVALID"
+    };
+  }
+  const combinedScore = 0.70 * testPart.testScore + 0.30 * userPart.userScore;
+  const probability = logistic((combinedScore - 45) * 0.09);
+  const probabilityPercent = probability * 100;
+  let riskBand = "LOW";
+  if (probability >= 0.20) riskBand = "HIGH";
+  else if (probability >= 0.05) riskBand = "MEDIUM";
+  return {
+    valid: true,
+    invalidReason: "",
+    adequacyNote: testPart.adequacyNote,
+    lineScores: { hemoglobin: testPart.L1, fusobacterium: testPart.L2, etbf: testPart.L3 },
+    familyGeneticsScore: userPart.F,
+    ageSexScore: userPart.A,
+    bowelHistoryScore: userPart.B,
+    habitsScore: userPart.H,
+    testScore: testPart.testScore,
+    userScore: userPart.userScore,
+    combinedScore,
+    probability,
+    probabilityPercent,
+    riskBand
+  };
+}
+
+// ===== DEFAULTS =====
+const defaultProfile = {
+  age: "", sex: "male", familyHistoryCRC: "none", hereditarySyndrome: "none",
+  ibd: false, bmi: "", smoking: "never", alcohol: "low", activity: "good",
+  dietQuality: 3, redProcessedMeat: "medium"
+};
+const defaultBands = { L1a: 0, L1b: 0, L2a: 0, L2b: 0, L3a: 0, L3b: 0, L4a: 0, L4b: 0 };
+const stripLabels = { L1a:"L1a Hb", L1b:"L1b 16S", L2a:"L2a F.nuc", L2b:"L2b 16S", L3a:"L3a ETBF", L3b:"L3b 16S", L4a:"L4a Spike", L4b:"L4b 16S" };
+
+// ===== I18N =====
+const langT = {
+  en: {
+    homeTitle: "FIT 2.0 AI Analyser", homeSub: "Screening Support Prototype",
+    scanNote: "Note:", scanNoteText: "This app demonstrates how the application functions. This page is designed for scanning with a camera on a phone, not for manual data entry.",
+    aboutTitle: "About This Tool", aboutDesc: "This prototype combines stool-based biomarker strip signals with clinical risk factors to provide a screening support probability. It is designed for research and development purposes only.",
+    howTitle: "How It Works", how1: "Complete your clinical profile", how2: "Record the 8 strip marker values from the assay", how3: "View the combined risk assessment",
+    startScan: "Start Scanning",
+    privacyTitle: "Privacy", privacyText: "We value your privacy. This app runs entirely on your device - your data is never stored on our servers and will never be used for studies without your explicit consent.",
+    medDisc: "Medical Disclaimer:", medDiscText: "This tool is for screening support only and does not diagnose colorectal cancer. Users with concerning results or symptoms should seek professional medical evaluation.",
+    noResults: "No results yet. Go to Scan to begin.", latestResult: "Latest Result",
+    tabHome: "Home", tabScan: "Scan", tabResults: "Results", tabInsights: "Insights", tabProfile: "Profile", tabHistory: "History",
+    scanTitle: "Scan", stripTitle: "Strip Markers", stripDesc: "Enter each marker value (0–3) from the assay strip.", calcRisk: "Calculate Risk", scanStrip: "Scan Strip", camTitle: "Scan Test Strip", camSub: "Position the test strip window within the guide and tap Capture.", camLoading: "Camera loading...", camNotDetected: "No test lines detected.", camNotDetectedSub: "Try aligning the strip more carefully or adjust lighting.", camCapture: "Capture", camClose: "Close Camera", camGuide: "Align strip window here", camDetectedTitle: "Detected Values", camDetectedNote: "Review detected values before accepting.", camAccept: "Use Detected Values", camRetake: "Retake", camUpload: "Upload Photo",
+    resultsTitle: "Results", riskAssess: "Risk assessment",
+    invalid: "Invalid", status: "Status", result_: "Result", reason: "Reason", adequacy: "Adequacy",
+    compScores: "Composite Scores", testScore70: "Test Score (70%)", userScore30: "User Score (30%)", combinedScore: "Combined Score",
+    biomarkerLines: "Biomarker Lines",
+    userRiskFactors: "User Risk Factors", familyGen: "Family / Genetics", ageSex: "Age / Sex", bowelHist: "Bowel History", habitsLife: "Habits / Lifestyle",
+    whoMeans: "Who this usually means", recActions: "Recommended actions", recs_: "Recommendations",
+    hkProgram: "Hong Kong Screening Program", hkDesc: "ColonScreen — The Government of the Hong Kong SAR provides a subsidised colorectal cancer screening program for Hong Kong residents aged 50–75.",
+    hkEligible: "You are in the eligible age range (50–75)", hkEligibleSub: "Visit ColonScreen to learn about subsidised screening options available to you.",
+    hkNotEligible: "Age outside screening range", hkNotEligibleSub: "ColonScreen covers residents aged 50–75. Speak with your healthcare provider about appropriate screening options.",
+    hkVisit: "Visit colonscreen.gov.hk", under50: "under 50", over75: "over 75", stripVals: "Strip Values",
+    insightsTitle: "AI Insights", aboutMarkers: "About the Markers",
+    h1: "L1 — Hemoglobin", h1d: "A protein found in red blood cells. Presence in stool may indicate bleeding in the gastrointestinal tract, which can be associated with polyps or colorectal cancer. This is the most established stool biomarker for CRC screening.",
+    h2: "L2 — Fusobacterium nucleatum", h2d: "An oral and gut bacterium that has been found in higher abundance in colorectal cancer tissue. It is thought to promote tumor progression through inflammatory pathways and by suppressing immune responses.",
+    h3: "L3 — Enterotoxigenic Bacteroides fragilis (ETBF)", h3d: "A toxin-producing gut bacterium linked to colorectal carcinogenesis. ETBF disrupts the gut epithelial barrier and activates inflammatory signaling cascades that can drive tumor formation.",
+    h4: "L4 — Spike-in Control", h4d: "An internal process control used to verify that the assay worked correctly. A failed spike-in control (value 0) invalidates the test result. A weak signal (value 1) triggers a 15% reduction in the test score as a conservative adjustment.",
+    h16s: "16S Controls (L1b, L2b, L3b, L4b)", h16sd: "Universal bacterial 16S ribosomal RNA gene targets used as internal reference controls. They help normalize for sample bacterial load, ensuring that the measured biomarker signals are interpreted relative to the overall bacterial content in the sample.",
+    aboutRisk: "About Risk Factors",
+    rf1: "Family & Genetics (40% of user score)", rf1d: "Family history of CRC is one of the strongest risk factors. Having a first-degree relative with CRC approximately doubles the risk. Hereditary syndromes like Lynch syndrome and FAP confer significantly higher lifetime risk.",
+    rf2: "Age & Sex (25% of user score)", rf2d: "CRC risk increases markedly after age 50, with the highest incidence in people aged 60 and older. Males have a slightly higher lifetime risk than females.",
+    rf3: "Bowel History (20% of user score)", rf3d: "Inflammatory bowel disease (Crohn’s disease or ulcerative colitis) is a well-established risk factor for CRC. Chronic inflammation of the colonic mucosa can lead to dysplasia and cancer over time.",
+    rf4: "Habits & Lifestyle (15% of user score)", rf4d: "Smoking, high BMI, low physical activity, high alcohol consumption, and diets high in red and processed meats are all modifiable risk factors. A high-quality diet (rich in fiber, fruits, and vegetables) may provide a protective effect.",
+    howScore: "How the Score Is Calculated",
+    howScore1: "The test score is computed from the three biomarker pairs (L1, L2, L3), each normalized against its 16S control using a ratio-based method. The final test score weighs hemoglobin at 50%, F. nucleatum at 30%, and ETBF at 20%.",
+    howScore2: "The user risk score combines four domains: family/genetics (40%), age/sex (25%), bowel history (20%), and lifestyle (15%).",
+    howScore3: "The combined score is 70% test + 30% user input, converted to a probability via logistic regression. Bands: LOW (<5%), MEDIUM (5–20%), HIGH (>20%).",
+    profileTitle: "Profile", clinInfo: "Clinical Information",
+    age_: "Age", sex_: "Sex", male: "Male", female: "Female", other: "Other",
+    bmi_: "BMI", calculate: "calculate", bmiFormula: "Weight (kg) ÷ Height (m)²", yourBmi: "Your BMI", bmiWeight: "Weight", bmiWeightPlh: "kg", bmiHeight: "Height", bmiHeightPlh: "metres", bmiApply: "Apply", bmiCancel: "Cancel", familyHist: "Family History of CRC",
+    none: "None", secondDeg: "Second-degree relative", firstDeg: "First-degree relative", multiRel: "Multiple relatives",
+    heredSyn: "Hereditary Syndrome", lynch: "Lynch syndrome", fap: "FAP", otherGen: "Other",
+    ibd: "Inflammatory Bowel Disease (IBD)",
+    ibdInfo: "A long-term condition where parts of the digestive tract become inflamed (Crohn’s disease or ulcerative colitis). People with IBD have a higher lifetime risk of colorectal cancer, so doctors may recommend earlier or more frequent screening.",
+    heredInfo: "Lynch syndrome — an inherited condition caused by mutations in DNA repair genes, greatly increasing colorectal cancer risk at a younger age.  ·  FAP — a rare inherited syndrome where hundreds to thousands of polyps form in the colon, often starting in teenage years.  ·  Other — for other genetic or hereditary conditions not covered above.",
+    smoking_: "Smoking", never: "Never", former: "Former", current: "Current",
+    alcohol_: "Alcohol", low: "Low", high: "High", activity_: "Activity", good: "Good",
+    diet: "Diet Quality (1–5)", poor: "Poor", average: "Average", excellent: "Excellent",
+    meat: "Red/Processed Meat", medium: "Medium",
+    saveProfile: "Save Profile", resetDefaults: "Reset to Defaults", saved: "Saved ✓",
+    historyTitle: "History", noHistory: "No history yet.", noResultsYet: "No results yet. Run a scan first.",
+    test_: "Test", user_: "User",
+    lowBand: "LOW", mediumBand: "MEDIUM", highBand: "HIGH",
+    recLowWho: "Average-risk adults age 45 or above with no symptoms, no prior colorectal cancer or adenomatous polyps, no inflammatory bowel disease, and no known hereditary syndrome such as Lynch syndrome or FAP.",
+    recLowActions: "Start screening at age 45. Options include annual FIT or high-sensitivity gFOBT, stool DNA-FIT every 1 to 3 years, CT colonography every 5 years, flexible sigmoidoscopy every 5 years, flexible sigmoidoscopy every 10 years plus annual FIT, or colonoscopy every 10 years. Ages 76 to 85 should be individualized based on health, prior screening, and preference.",
+    recMedWho: "People with 1 first-degree relative with colorectal cancer or an advanced adenoma are usually treated as increased-risk rather than average-risk.",
+    recMedActions: "Colonoscopy is the preferred test. Start at age 40 to 50, or 10 years younger than the relative’s diagnosis, and repeat every 5 to 10 years; FIT every 1 to 2 years can be used if colonoscopy is not feasible.",
+    recHighWho: "People with Lynch syndrome, FAP, or other known hereditary syndromes are high risk, and people with 2 or more first-degree relatives with colorectal cancer also need more intensive surveillance.",
+    recHighActions: "For Lynch syndrome, colonoscopy is recommended every 1 to 2 years starting at age 20 to 25, or 2 to 5 years before the earliest family cancer if it happened before age 25. For non-hereditary families with 2 or more first-degree relatives with colorectal cancer, colonoscopy should start at age 40 or 10 years before the earliest diagnosis and continue every 5 years.",
+    bandRisk: "Risk",
+    adequateSample: "Adequate sample", invalidSample: "Invalid sample",
+    weakAdeq: "Weak adequacy signal: test score reduced by 15%", invalidResult: "Invalid result: sample adequacy / spike-in control failed.",
+  },
+  tc: {
+    homeTitle: "FIT 2.0 人工智能分析儀", homeSub: "篩查支援原型系統",
+    scanNote: "注意：", scanNoteText: "此應用程式展示軟件的功能運作方式。此頁面設計用於手機相機掃描，並非供用戶手動輸入資料。",
+    aboutTitle: "關於本工具", aboutDesc: "此原型系統結合糞便生物標記物測試條訊號與臨床風險因素，提供篩查支援概率。僅供研究及開發用途。",
+    howTitle: "使用方法", how1: "填寫您的臨床資料", how2: "記錄測試條上的8個標記數值", how3: "查看綜合風險評估結果",
+    startScan: "開始掃描",
+    privacyTitle: "私隱", privacyText: "我們重視您的私隱。此應用程式完全在您的裝置上運行 — 您的資料絕不會儲存在我們的伺服器上，未經您明確同意也不會用於研究。",
+    medDisc: "醫療免責聲明：", medDiscText: "本工具僅供篩查支援用途，並非診斷大腸癌。如有疑慮或症狀，請尋求專業醫療評估。",
+    noResults: "尚未有結果。請前往「掃描」開始。", latestResult: "最近結果",
+    tabHome: "首頁", tabScan: "掃描", tabResults: "結果", tabInsights: "資訊", tabProfile: "檔案", tabHistory: "記錄",
+    scanTitle: "掃描", stripTitle: "測試條標記", stripDesc: "輸入測試條上每個標記的數值（0–3）。", calcRisk: "計算風險", scanStrip: "掃描測試條", camTitle: "掃描測試條", camSub: "將測試條窗口對準導引框架然後拍攝。", camLoading: "相機載入中...", camNotDetected: "未檢測到測試線。", camNotDetectedSub: "請嘗試更仔細地對齊測試條或調整光線。", camCapture: "拍攝", camClose: "關閉相機", camGuide: "將測試條窗口對準此處", camDetectedTitle: "檢測到的數值", camDetectedNote: "套用前請檢查檢測數值。", camAccept: "套用檢測數值", camRetake: "重新拍攝", camUpload: "上傳圖片",
+    resultsTitle: "結果", riskAssess: "風險評估",
+    invalid: "無效", status: "狀態", result_: "結果", reason: "原因", adequacy: "樣本充足性",
+    compScores: "綜合評分", testScore70: "測試評分（70%）", userScore30: "用戶評分（30%）", combinedScore: "綜合評分",
+    biomarkerLines: "生物標記物",
+    userRiskFactors: "用戶風險因素", familyGen: "家族／遺傳", ageSex: "年齡／性別", bowelHist: "腸道病史", habitsLife: "習慣／生活模式",
+    whoMeans: "適用人群", recActions: "建議措施", recs_: "建議",
+    hkProgram: "香港篩查計劃",
+    hkDesc: "「大腸癌篩查計劃」— 香港特別行政區政府為50至75歲香港居民提供資助大腸癌篩查服務。",
+    hkEligible: "您符合篩查年齡範圍（50–75歲）",
+    hkEligibleSub: "請瀏覽大腸癌篩查計劃網站了解更多資助篩查選項。",
+    hkNotEligible: "年齡不符合篩查範圍",
+    hkNotEligibleSub: "大腸癌篩查計劃涵蓋50–75歲居民。請向醫護人員諮詢合適的篩查方桑。",
+    hkVisit: "瀏覽 colonscreen.gov.hk", under50: "未滿50歲", over75: "超過75歲",
+    stripVals: "測試條數值",
+    insightsTitle: "人工智能資訊", aboutMarkers: "關於生物標記物",
+    h1: "L1 — 血紅蛋白", h1d: "紅血球中的蛋白質。糞便中出現可能顯示腸膚道出血，與息肉或大腸癌有關。這是最常用的大腸癌篩查糞便生物標記物。",
+    h2: "L2 — 核棲杆菌", h2d: "一種口腔及腸道細菌，在大腸癌組織中含量较高。被認為通過炎症途徑及抑制免疫反應促進腫瘤進展。",
+    h3: "L3 — 產腸毒素脆弱梗杆菌（ETBF）",
+    h3d: "一種產生毒素的腸道細菌，與大腸癌發生有關。ETBF破壞腸道上皮屏障並激活炎症信號級聯反應，可能推動腫瘤形成。",
+    h4: "L4 — 加標對照", h4d: "用於驗證測試是否正確操作的內部過程對照。加標對照失敗（數值0）會判定結果無效。弱訊號（數值1）會將測試評分降低15%作為保守調整。",
+    h16s: "16S 對照（L1b、L2b、L3b、L4b）",
+    h16sd: "用作內部參考對照的通用細菌16S核糖體RNA基因靶標。有助於根據樣本細菌總量進行標準化，確保生物標記物訊號的解釋與樣本整體細菌含量相符。",
+    aboutRisk: "關於風險因素",
+    rf1: "家族及遺傳（佔用戶評分40%）",
+    rf1d: "大腸癌家族史是最強烈的風險因素之一。有一名直系親屬患大腸癌，風險約增加一倍。林奇綜合症及FAP等遺傳綜合症會顯著增加終生風險。",
+    rf2: "年齡及性別（佔用戶評分25%）",
+    rf2d: "50歲後大腸癌風險明顯增加，60歲及以上人士發病率最高。男性終生風險略高於女性。",
+    rf3: "腸道病史（佔用戶評分20%）",
+    rf3d: "炎症性腸病（克隆氏症或溶性結腸炎）是大腸癌的確定風險因素。結腸黏膜的慢性炎症可隨時間進展為細胞異常增生及癌症。",
+    rf4: "習慣及生活模式（佔用戶評分15%）",
+    rf4d: "吸煙、高BMI、缺乏運動、高酒精攝入量及高紅肉和加工肉類飲食均為可改變的風險因素。優質飲食（富含纖維、水果和蔬菜）可能具有保護作用。",
+    howScore: "評分計算方法",
+    howScore1: "測試評分由三對生物標記物（L1、L2、L3）計算得出，每對均以其16S對照進行比率標準化。最終測試評分中血紅蛋白佔50%，核棲杆菌佔30%，ETBF佔20%。",
+    howScore2: "用戶風險評分結合四個範疇：家族/遺傳（40%）、年齡/性別（25%）、腸道病史（20%）及生活模式（15%）。",
+    howScore3: "綜合評分為70%測試結果加30%用戶輸入，通過邏輯回歸轉化為概率。風險級別：低（<5%）、中（5–20%）、高（>20%）。",
+    profileTitle: "檔案", clinInfo: "臨床資料",
+    age_: "年齡", sex_: "性別", male: "男", female: "女", other: "其他",
+    bmi_: "BMI", calculate: "計算", bmiFormula: "體重 (公斤) ÷ 身高 (米)²", yourBmi: "您的BMI", bmiWeight: "體重", bmiWeightPlh: "公斤", bmiHeight: "身高", bmiHeightPlh: "米", bmiApply: "套用", bmiCancel: "取消", familyHist: "大腸癌家族史",
+    none: "無", secondDeg: "二級親屬", firstDeg: "一級親屬", multiRel: "多名親屬",
+    heredSyn: "遺傳綜合症", lynch: "林奇綜合症", fap: "FAP（家族性腺瘤性息肉病）", otherGen: "其他",
+    ibd: "炎症性腸病（IBD）",
+    ibdInfo: "一種消化道部分區域長期發炎的疾病（克隆氏症或溶性結腸炎）。IBD患者患大腸癌的終生風險較高，醫生可能會建議更早或更頻繁進行大腸鏡檢查。",
+    heredInfo: "林奇綜合症 — 由DNA修復基因突變引起的遺傳疾病，大幅增加年輕時患大腸癌的風險。FAP — 罕見遺傳綜合症，結腸內形成數百至數千個息肉。其他 — 其他遺傳或遺傳性疾病。",
+    smoking_: "吸煙", never: "從不", former: "已戒", current: "現時有吸煙",
+    alcohol_: "酒精", low: "低", high: "高", activity_: "運動", good: "良好",
+    diet: "飲食質量（1–5）", poor: "差", average: "一般", excellent: "優秀",
+    meat: "紅肉／加工肉類", medium: "中等",
+    saveProfile: "儲存檔案", resetDefaults: "重設為預設值", saved: "已儲存 ✓",
+    historyTitle: "記錄", noHistory: "暫無記錄。", noResultsYet: "尚未有結果。請先執行掃描。",
+    test_: "測試", user_: "用戶",
+    lowBand: "低", mediumBand: "中", highBand: "高",
+    recLowWho: "45歲或以上無症狀、無大腸癌或腺瘤性息肉病史、無炎症性腸病、無林奇綜合症或FAP等遺傳綜合症的一般風險成人。",
+    recLowActions: "建議45歲開始篩查。選項包括每年FIT或高靈敏度gFOBT、每1至3年糞便DNA-FIT、每5年CT大腸造影、每5年軟式乙狀結腸鏡檢查、每10年軟式乙狀結腸鏡檢查加每年FIT，或每10年大腸鏡檢查。76至85歲應根據健康狀況、既往篩查及個人意願個別考慮。",
+    recMedWho: "有一名一級親屬患大腸癌或晚期腺瘤的人士通常被視為高風險而非一般風險。",
+    recMedActions: "建議進行大腸鏡檢查。由40至50歲開始，或比親屬確診年齡年輕10歲開始，每5至10年重複；如無法進行大腸鏡檢查，可考慮每1至2年進行FIT。",
+    recHighWho: "林奇綜合症、FAP或其他已知遺傳綜合症患者屬於高風險，有兩名或以上一級親屬患大腸癌的人士亦需要更密切監察。",
+    recHighActions: "林奇綜合症患者建議由20至25歲開始每1至2年進行大腸鏡檢查，或比最早確診家族癌症年輕2至5年（如在25歲前發生）。非遺傳性但有兩名或以上一級親屬患大腸癌的家庭，建議由40歲或最早確診年齡前10歲開始大腸鏡檢查，並每5年繼續。",
+    bandRisk: "風險",
+    adequateSample: "樣本充足", invalidSample: "樣本無效",
+    weakAdeq: "充足性訊號弱：測試評分已降低15%",
+    invalidResult: "無效結果：樣本充足性／加標對照失敗。",
+  }
+};
+let currentLang = (() => { try { return localStorage.getItem("crc_lang") || "en"; } catch(_){ return "en"; } })();
+function t(k) { return (langT[currentLang] && langT[currentLang][k] !== undefined) ? langT[currentLang][k] : (langT.en[k] || k); }
+function setLang(l) {
+  currentLang = l;
+  try { localStorage.setItem("crc_lang", l); } catch(_) {}
+  document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.dataset.lang === l));
+  document.title = t("homeTitle");
+  // Re-render dynamic content
+  renderHomeSummary();
+  renderStripGrid();
+  renderProfileForm();
+  renderInsights();
+  renderHistory();
+  if (lastResult) renderResults(lastResult, currentBands);
+  // Update static labels
+  document.querySelectorAll(".tab-item").forEach(tab => {
+    const key = "tab" + tab.dataset.tab;
+    tab.querySelector(".tab-item-label").textContent = t(key);
+  });
+  document.getElementById("homeTitle").textContent = t("homeTitle");
+  document.getElementById("homeSubtitle").textContent = t("homeSub");
+  document.getElementById("scanTitle").textContent = t("scanTitle");
+  document.getElementById("resultsTitle").textContent = t("resultsTitle");
+  document.getElementById("insightsTitle").textContent = t("insightsTitle");
+  document.getElementById("profileTitle").textContent = t("profileTitle");
+  document.getElementById("historyTitle").textContent = t("historyTitle");
+  document.getElementById("scanStripTitle").textContent = t("stripTitle");
+  document.getElementById("scanStripDesc").textContent = t("stripDesc");
+  document.getElementById("scanRunBtn").textContent = t("calcRisk");
+  const sdl = document.getElementById("scanDiscLabel");
+  const sdt = document.getElementById("scanDiscText");
+  if (sdl && sdt) { sdl.textContent = t("scanNote"); sdt.textContent = t("scanNoteText"); }
+  document.getElementById("profileClinInfo").textContent = t("clinInfo");
+  document.getElementById("profileSaveBtn").textContent = t("saveProfile");
+  document.getElementById("profileClearBtn").textContent = t("resetDefaults");
+  // BMI modal
+  const bmiH3 = document.querySelector(".bmi-modal h3");
+  const bmiSub = document.querySelector(".bmi-sub");
+  const bmiResLabel = document.querySelector("#bmiResult > div:first-child");
+  if (bmiH3) bmiH3.textContent = t("bmi_");
+  if (bmiSub) bmiSub.textContent = t("bmiFormula");
+  if (bmiResLabel) bmiResLabel.textContent = t("yourBmi");
+  document.getElementById("bmiApplyBtn").textContent = t("bmiApply");
+  document.getElementById("bmiCancelBtn").textContent = t("bmiCancel");
+  document.querySelector('#bmiWeight').previousElementSibling.textContent = t("bmiWeight");
+  document.querySelector('#bmiHeight').previousElementSibling.textContent = t("bmiHeight");
+  document.getElementById("bmiWeight").placeholder = t("bmiWeightPlh");
+  document.getElementById("bmiHeight").placeholder = t("bmiHeightPlh");
+  // Camera modal
+  const camTitle = document.getElementById("camTitle");
+  const camSub = document.getElementById("camSub");
+  const camPh = document.getElementById("camPlaceholderText");
+  const camRes = document.getElementById("camResultText");
+  const camResSub = document.getElementById("camResultSub");
+  const camCap = document.getElementById("camCaptureBtn");
+  const camClose = document.getElementById("camCloseBtn");
+  const scanCamLabel = document.getElementById("scanCameraLabel");
+  if (camTitle) camTitle.textContent = t("camTitle");
+  if (camSub) camSub.textContent = t("camSub");
+  if (camPh) camPh.textContent = t("camLoading");
+  if (camRes) camRes.textContent = t("camNotDetected");
+  if (camResSub) camResSub.textContent = t("camNotDetectedSub");
+  if (camCap) camCap.textContent = t("camCapture");
+  if (camClose) camClose.textContent = t("camClose");
+  if (scanCamLabel) scanCamLabel.textContent = t("scanStrip");
+  const camGuide = document.getElementById("camGuideLabel");
+  if (camGuide) camGuide.textContent = t("camGuide");
+  const camDetTitle = document.getElementById("camDetectedTitle");
+  if (camDetTitle) camDetTitle.textContent = t("camDetectedTitle");
+  const camDetNote = document.getElementById("camDetectedNote");
+  if (camDetNote) camDetNote.textContent = t("camDetectedNote");
+  const camAccept = document.getElementById("camAcceptBtn");
+  if (camAccept) camAccept.textContent = t("camAccept");
+  const camRetake = document.getElementById("camRetakeBtn");
+  if (camRetake) camRetake.textContent = t("camRetake");
+  const camUpload = document.getElementById("camUploadBtn");
+  if (camUpload) camUpload.textContent = t("camUpload");
+  // Home scan button
+  const hsBtn = document.getElementById("homeScanBtn");
+  if (hsBtn) hsBtn.childNodes.forEach(n => { if (n.nodeType === 3) n.textContent = t("startScan"); });
+  // Home static text
+  document.getElementById("homeAboutTitle").textContent = t("aboutTitle");
+  document.getElementById("homeAboutDesc").textContent = t("aboutDesc");
+  document.getElementById("homeHowTitle").textContent = t("howTitle");
+  document.getElementById("homeHowSteps").innerHTML =
+    '<strong style="color:var(--text);">1.</strong> ' + t("how1") + '<br>' +
+    '<strong style="color:var(--text);">2.</strong> ' + t("how2") + '<br>' +
+    '<strong style="color:var(--text);">3.</strong> ' + t("how3");
+  document.getElementById("homePrivacyTitle").textContent = t("privacyTitle");
+  document.getElementById("homePrivacyText").textContent = t("privacyText");
+  document.getElementById("homeDiscLabel").textContent = t("medDisc");
+  document.getElementById("homeDiscText").textContent = t("medDiscText");
+}
+
+// ===== STATE =====
+let currentProfile = loadProfile();
+let currentBands = { ...defaultBands };
+let lastResult = null;
+let viewerIndex = null; // history viewer
+
+// ===== LOCAL STORAGE =====
+function loadProfile() {
+  try {
+    const d = JSON.parse(localStorage.getItem("crc_profile"));
+    if (d) return { ...defaultProfile, ...d };
+  } catch(_) {}
+  return { ...defaultProfile };
+}
+function saveProfile(p) {
+  localStorage.setItem("crc_profile", JSON.stringify(p));
+}
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("crc_history")) || [];
+  } catch(_) { return []; }
+}
+function saveHistory(h) {
+  localStorage.setItem("crc_history", JSON.stringify(h));
+}
+function addHistoryEntry(entry) {
+  const h = loadHistory();
+  h.unshift(entry);
+  saveHistory(h);
+}
+
+// ===== RENDER: STRIP GRID =====
+function renderStripGrid() {
+  const grid = document.getElementById("stripGrid");
+  let html = "";
+  const keys = ["L1a","L1b","L2a","L2b","L3a","L3b","L4a","L4b"];
+  keys.forEach(k => {
+    const val = currentBands[k];
+    html += `<div class="strip-item">
+      <div class="strip-label">${stripLabels[k]}</div>
+      <div class="strip-controls">`;
+    for (let v = 0; v <= 3; v++) {
+      html += `<button class="strip-btn${val === v ? ' selected' : ''}" data-key="${k}" data-val="${v}">${v}</button>`;
+    }
+    html += `</div></div>`;
+  });
+  grid.innerHTML = html;
+  grid.querySelectorAll(".strip-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const key = btn.dataset.key;
+      const val = Number(btn.dataset.val);
+      currentBands[key] = val;
+      renderStripGrid();
+    });
+  });
+}
+
+// ===== RENDER: PROFILE FORM =====
+function renderProfileForm() {
+  const p = currentProfile;
+  document.getElementById("profileForm").innerHTML = `
+    <div class="form-group">
+      <label class="form-label">${t("age_")}</label>
+      <input class="form-input" type="number" min="18" max="120" id="pfAge" value="${p.age}" placeholder="${t("age_")}">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("sex_")}</label>
+        <select class="form-select" id="pfSex">
+          <option value="male"${p.sex==="male"?" selected":""}>${t("male")}</option>
+          <option value="female"${p.sex==="female"?" selected":""}>${t("female")}</option>
+          <option value="other"${p.sex==="other"?" selected":""}>${t("other")}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t("bmi_")} <span style="font-weight:400;font-size:12px;color:var(--accent);text-decoration:none;margin-left:4px;cursor:pointer;" id="bmiCalcBtn">${t("calculate")}</span> <a href="https://www.lcsd.gov.hk/en/fitnesswalking/fitness/heath_cal/bmi-calculator.html" target="_blank" rel="noopener noreferrer" style="font-weight:400;font-size:12px;color:var(--accent);text-decoration:none;margin-left:2px;">↗</a></label>
+        <input class="form-input" type="number" min="10" max="60" step="0.1" id="pfBmi" value="${p.bmi}" placeholder="kg/m²">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("familyHist")}</label>
+      <select class="form-select" id="pfFh">
+        <option value="none"${p.familyHistoryCRC==="none"?" selected":""}>${t("none")}</option>
+        <option value="second-degree"${p.familyHistoryCRC==="second-degree"?" selected":""}>${t("secondDeg")}</option>
+        <option value="first-degree"${p.familyHistoryCRC==="first-degree"?" selected":""}>${t("firstDeg")}</option>
+        <option value="multiple-relatives"${p.familyHistoryCRC==="multiple-relatives"?" selected":""}>${t("multiRel")}</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("heredSyn")}</label>
+      <select class="form-select" id="pfHs">
+        <option value="none"${p.hereditarySyndrome==="none"?" selected":""}>${t("none")}</option>
+        <option value="lynch"${p.hereditarySyndrome==="lynch"?" selected":""}>${t("lynch")}</option>
+        <option value="fap"${p.hereditarySyndrome==="fap"?" selected":""}>${t("fap")}</option>
+        <option value="other"${p.hereditarySyndrome==="other"?" selected":""}>${t("otherGen")}</option>
+      </select>
+      <div style="font-size:12px;color:var(--text-tertiary);line-height:1.5;margin-top:6px;">${t("heredInfo")}</div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">${t("ibd")}</span>
+      <button class="toggle${p.ibd?' on':''}" id="pfIbd"></button>
+    </div>
+    <div style="font-size:12px;color:var(--text-tertiary);line-height:1.5;margin-bottom:8px;">${t("ibdInfo")}</div>
+    <div class="form-group">
+      <label class="form-label">${t("smoking_")}</label>
+      <select class="form-select" id="pfSmoke">
+        <option value="never"${p.smoking==="never"?" selected":""}>${t("never")}</option>
+        <option value="former"${p.smoking==="former"?" selected":""}>${t("former")}</option>
+        <option value="current"${p.smoking==="current"?" selected":""}>${t("current")}</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("alcohol_")}</label>
+        <select class="form-select" id="pfAlc">
+          <option value="low"${p.alcohol==="low"?" selected":""}>${t("low")}</option>
+          <option value="high"${p.alcohol==="high"?" selected":""}>${t("high")}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t("activity_")}</label>
+        <select class="form-select" id="pfAct">
+          <option value="good"${p.activity==="good"?" selected":""}>${t("good")}</option>
+          <option value="low"${p.activity==="low"?" selected":""}>${t("low")}</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("diet")}</label>
+        <select class="form-select" id="pfDiet">
+          <option value="1"${p.dietQuality==1?" selected":""}>1 — ${t("poor")}</option>
+          <option value="2"${p.dietQuality==2?" selected":""}>2</option>
+          <option value="3"${p.dietQuality==3?" selected":""}>3 — ${t("average")}</option>
+          <option value="4"${p.dietQuality==4?" selected":""}>4</option>
+          <option value="5"${p.dietQuality==5?" selected":""}>5 — ${t("excellent")}</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t("meat")}</label>
+        <select class="form-select" id="pfMeat">
+          <option value="low"${p.redProcessedMeat==="low"?" selected":""}>${t("low")}</option>
+          <option value="medium"${p.redProcessedMeat==="medium"?" selected":""}>${t("medium")}</option>
+          <option value="high"${p.redProcessedMeat==="high"?" selected":""}>${t("high")}</option>
+        </select>
+      </div>
+    </div>
+  `;
+  document.getElementById("pfIbd").addEventListener("click", () => {
+    currentProfile.ibd = !currentProfile.ibd;
+    renderProfileForm();
+  });
+}
+
+// ===== RENDER: RESULTS =====
+function renderResults(r, bands) {
+  const c = document.getElementById("resultsContent");
+  if (!r) {
+    c.innerHTML = `<div class="empty-state"><p>${t("noResultsYet")}</p></div>`;
+    return;
+  }
+  const bandLabel = r.riskBand.toLowerCase();
+  const bandDisplay = t(r.riskBand === "LOW" ? "lowBand" : r.riskBand === "MEDIUM" ? "mediumBand" : r.riskBand === "HIGH" ? "highBand" : "invalid");
+  let html = `<div class="card score-block" style="padding:24px 20px;">
+    <div class="band" style="margin-bottom:10px;"><span class="risk-badge ${bandLabel}" style="font-size:18px;padding:6px 20px;">${bandDisplay}</span></div>
+    <div class="sub" style="font-size:15px;">${r.valid ? t("riskAssess") : t("invalid")}</div>
+  </div>`;
+
+  if (!r.valid) {
+    html += `<div class="card"><div class="card-title">${t("status")}</div><div class="label-row"><span class="label-key">${t("result_")}</span><span class="label-value" style="color:var(--red);">${t("invalid")}</span></div><div class="label-row"><span class="label-key">${t("reason")}</span><span class="label-value" style="font-size:13px;max-width:200px;">${r.invalidReason}</span></div><div class="label-row"><span class="label-key">${t("adequacy")}</span><span class="label-value">${r.adequacyNote}</span></div></div>`;
+  } else {
+    html += `<div class="card"><div class="card-title">${t("compScores")}</div>
+      <div class="label-row"><span class="label-key">${t("testScore70")}</span><span class="label-value">${r.testScore.toFixed(1)}</span></div>
+      <div class="label-row"><span class="label-key">${t("userScore30")}</span><span class="label-value">${r.userScore.toFixed(1)}</span></div>
+      <div class="label-row"><span class="label-key">${t("combinedScore")}</span><span class="label-value">${r.combinedScore.toFixed(1)}</span></div>
+    </div>`;
+  }
+
+  html += `<div class="card"><div class="card-title">${t("biomarkerLines")}</div>
+    <div class="label-row"><span class="label-key">L1 — Hemoglobin</span><span class="label-value">${r.lineScores.hemoglobin.toFixed(1)}</span></div>
+    <div class="label-row"><span class="label-key">L2 — F. nucleatum</span><span class="label-value">${r.lineScores.fusobacterium.toFixed(1)}</span></div>
+    <div class="label-row"><span class="label-key">L3 — ETBF</span><span class="label-value">${r.lineScores.etbf.toFixed(1)}</span></div>
+  </div>`;
+
+  html += `<div class="card"><div class="card-title">${t("userRiskFactors")}</div>
+    <div class="label-row"><span class="label-key">${t("familyGen")}</span><span class="label-value">${r.familyGeneticsScore.toFixed(0)}</span></div>
+    <div class="label-row"><span class="label-key">${t("ageSex")}</span><span class="label-value">${r.ageSexScore.toFixed(0)}</span></div>
+    <div class="label-row"><span class="label-key">${t("bowelHist")}</span><span class="label-value">${r.bowelHistoryScore.toFixed(0)}</span></div>
+    <div class="label-row"><span class="label-key">${t("habitsLife")}</span><span class="label-value">${r.habitsScore.toFixed(0)}</span></div>
+  </div>`;
+
+  html += `<div class="card"><div class="card-title">${t("adequacy")}</div><p class="fs-14" style="color:var(--text-secondary);">${r.adequacyNote}</p></div>`;
+
+  // Recommendations by risk level
+  if (r.valid) {
+    const recs = {
+      LOW: { who: t("recLowWho"), actions: t("recLowActions") },
+      MEDIUM: { who: t("recMedWho"), actions: t("recMedActions") },
+      HIGH: { who: t("recHighWho"), actions: t("recHighActions") }
+    };
+    const rec = recs[r.riskBand];
+    if (rec) {
+      html += `<div class="card">
+        <div class="card-title">${t("recs_")} — ${bandDisplay} ${t("bandRisk")}</div>
+        <div style="margin-bottom:12px;">
+          <p style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">${t("whoMeans")}</p>
+          <p style="font-size:14px;color:var(--text-secondary);line-height:1.55;">${rec.who}</p>
+        </div>
+        <div>
+          <p style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px;">${t("recActions")}</p>
+          <p style="font-size:14px;color:var(--text-secondary);line-height:1.55;">${rec.actions}</p>
+        </div>
+      </div>`;
+    }
+  }
+
+  // HK ColonScreen
+  const hkAge = Number(currentProfile.age || 0);
+  const hkEligible = hkAge >= 50 && hkAge <= 75;
+  const ageDesc = hkAge < 50 ? t("under50") : t("over75");
+  html += `<div class="card">
+    <div class="card-title">${t("hkProgram")}</div>
+    <p class="fs-14" style="color:var(--text-secondary);line-height:1.55;">
+      <strong style="color:var(--text);">ColonScreen</strong> — ${t("hkDesc")}
+    </p>
+    ${hkEligible ? `
+    <div style="background:var(--green-bg);border-radius:12px;padding:14px;margin-top:10px;border:0.5px solid rgba(56,184,122,0.2);">
+      <p style="font-size:14px;font-weight:600;color:#1f8a4e;">${t("hkEligible")}</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">${t("hkEligibleSub")}</p>
+    </div>` : hkAge > 0 ? `
+    <div style="background:rgba(59,130,196,0.06);border-radius:12px;padding:14px;margin-top:10px;border:0.5px solid rgba(59,130,196,0.12);">
+      <p style="font-size:14px;font-weight:500;color:var(--accent);">${t("hkNotEligible")} (${ageDesc})</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;">${t("hkNotEligibleSub")}</p>
+    </div>` : ''}
+    <a href="https://www.colonscreen.gov.hk/en/public/index.html" target="_blank" rel="noopener noreferrer" style="display:inline-flex;align-items:center;gap:4px;margin-top:10px;font-size:14px;font-weight:500;color:var(--accent);text-decoration:none;">
+      ${t("hkVisit")}
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+    </a>
+  </div>`;
+
+  // Show input bands
+  if (bands) {
+    html += `<div class="card"><div class="card-title">${t("stripVals")}</div>`;
+    Object.keys(bands).forEach(k => {
+      html += `<div class="label-row"><span class="label-key">${stripLabels[k]}</span><span class="label-value">${bands[k]}</span></div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="disclaimer">
+    <strong>${t("medDisc")}</strong> ${t("medDiscText")}
+  </div>`;
+  c.innerHTML = html;
+}
+
+// ===== RENDER: HOME SUMMARY =====
+function renderHomeSummary() {
+  const el = document.getElementById("homeSummary");
+  const hist = loadHistory();
+  const latest = hist[0] || null;
+  if (!latest) {
+    el.innerHTML = `<div class="card">
+      <p style="font-size:14px;color:var(--text-secondary);text-align:center;padding:10px 0;">${t("noResults")}</p>
+    </div>`;
+    return;
+  }
+  const r = latest.result;
+  const bandLabel = (r.riskBand || "INVALID").toLowerCase();
+  const bandDisplay = t(r.riskBand === "LOW" ? "lowBand" : r.riskBand === "MEDIUM" ? "mediumBand" : r.riskBand === "HIGH" ? "highBand" : "invalid");
+  el.innerHTML = `<div class="card">
+    <div class="flex-between" style="margin-bottom:10px;">
+      <span class="subhead">${t("latestResult")}</span>
+      <span class="caption-small">${formatDate(latest.timestamp)}</span>
+    </div>
+    <div class="flex-between">
+      <div>
+        <span class="risk-badge ${bandLabel}">${bandDisplay}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ===== RENDER: HISTORY =====
+function renderHistory() {
+  const el = document.getElementById("historyList");
+  const h = loadHistory();
+  if (h.length === 0) {
+    el.innerHTML = `<div class="card"><div class="empty-state"><p style="font-size:14px;">${t("noHistory")}</p></div></div>`;
+    return;
+  }
+  let html = `<div class="card" style="padding:0;">`;
+  h.forEach((entry, idx) => {
+    const r = entry.result;
+    const bandLabel = (r.riskBand || "INVALID").toLowerCase();
+    const isV = r.valid;
+    const bandDisplay = t(r.riskBand === "LOW" ? "lowBand" : r.riskBand === "MEDIUM" ? "mediumBand" : r.riskBand === "HIGH" ? "highBand" : "invalid");
+    html += `<div class="history-item" data-idx="${idx}">
+      <div class="history-item-top">
+        <div>
+          <span class="risk-badge ${bandLabel}" style="font-size:12px;padding:2px 10px;">${bandDisplay}</span>
+          <span class="history-date" style="margin-left:8px;">${formatDate(entry.timestamp)}</span>
+        </div>
+        <span class="history-score" style="color:${bandLabel === 'high' ? 'var(--red)' : bandLabel === 'medium' ? 'var(--orange)' : 'var(--green)'}">${bandDisplay}</span>
+      </div>
+      <div class="history-detail">${t("test_")}: ${r.testScore != null ? r.testScore.toFixed(1) : '—'} · ${t("user_")}: ${r.userScore != null ? r.userScore.toFixed(1) : '—'}${!isV ? ' · ' + t("invalid") : ''}</div>
+    </div>`;
+  });
+  html += `</div>`;
+  el.innerHTML = html;
+  el.querySelectorAll(".history-item").forEach(item => {
+    item.addEventListener("click", () => {
+      const idx = Number(item.dataset.idx);
+      const hh = loadHistory();
+      if (hh[idx]) {
+        viewerIndex = idx;
+        lastResult = hh[idx].result;
+        currentBands = hh[idx].bands ? { ...hh[idx].bands } : { ...defaultBands };
+        renderResults(lastResult, currentBands);
+        switchTab("Results");
+      }
+    });
+  });
+}
+
+// ===== RENDER: AI INSIGHTS =====
+function renderInsights() {
+  const el = document.getElementById("insightsContent");
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title">${t("aboutMarkers")}</div>
+      <div class="insight-section">
+        <h4>${t("h1")}</h4>
+        <p>${t("h1d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("h2")}</h4>
+        <p>${t("h2d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("h3")}</h4>
+        <p>${t("h3d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("h4")}</h4>
+        <p>${t("h4d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("h16s")}</h4>
+        <p>${t("h16sd")}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">${t("aboutRisk")}</div>
+      <div class="insight-section">
+        <h4>${t("rf1")}</h4>
+        <p>${t("rf1d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("rf2")}</h4>
+        <p>${t("rf2d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("rf3")}</h4>
+        <p>${t("rf3d")}</p>
+      </div>
+      <div class="insight-section">
+        <h4>${t("rf4")}</h4>
+        <p>${t("rf4d")}</p>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">${t("howScore")}</div>
+      <div class="insight-section">
+        <p>${t("howScore1")}</p><br>
+        <p>${t("howScore2")}</p><br>
+        <p>${t("howScore3")}</p>
+      </div>
+    </div>
+    <div class="disclaimer">
+      <strong>${t("medDisc")}</strong> ${t("medDiscText")}
+    </div>
+  `;
+}
+
+// ===== UTILITY =====
+function formatDate(ts) {
+  const d = new Date(ts);
+  return d.toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ===== TAB SWITCHING =====
+function switchTab(name) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.querySelectorAll(".tab-item").forEach(t => t.classList.remove("active"));
+  document.getElementById("screen" + name).classList.add("active");
+  document.querySelector(`.tab-item[data-tab="${name}"]`).classList.add("active");
+  document.getElementById("screenContainer").scrollTop = 0;
+  // Refresh content on tab switch
+  switch (name) {
+    case "Home": renderHomeSummary(); break;
+    case "Results": renderResults(lastResult, currentBands); break;
+    case "Insights": renderInsights(); break;
+    case "History": renderHistory(); break;
+  }
+}
+
+// ===== TAB BAR EVENTS =====
+document.querySelectorAll(".tab-item").forEach(tab => {
+  tab.addEventListener("click", () => {
+    switchTab(tab.dataset.tab);
+  });
+});
+
+// ===== PROFILE SAVE =====
+document.getElementById("profileSaveBtn").addEventListener("click", () => {
+  const p = { ...currentProfile };
+  p.age = document.getElementById("pfAge").value;
+  p.sex = document.getElementById("pfSex").value;
+  p.bmi = document.getElementById("pfBmi").value;
+  p.familyHistoryCRC = document.getElementById("pfFh").value;
+  p.hereditarySyndrome = document.getElementById("pfHs").value;
+  p.smoking = document.getElementById("pfSmoke").value;
+  p.alcohol = document.getElementById("pfAlc").value;
+  p.activity = document.getElementById("pfAct").value;
+  p.dietQuality = Number(document.getElementById("pfDiet").value);
+  p.redProcessedMeat = document.getElementById("pfMeat").value;
+  // ibd is already live from toggle
+  Object.assign(currentProfile, p);
+  saveProfile(currentProfile);
+  // Show feedback
+  const btn = document.getElementById("profileSaveBtn");
+  const orig = btn.textContent;
+  btn.textContent = t("saved");
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+});
+
+document.getElementById("profileClearBtn").addEventListener("click", () => {
+  currentProfile = { ...defaultProfile };
+  saveProfile(currentProfile);
+  renderProfileForm();
+});
+
+// ===== SCAN RUN =====
+document.getElementById("scanRunBtn").addEventListener("click", () => {
+  result = computeFinalProbability(currentProfile, currentBands);
+  lastResult = result;
+  viewerIndex = null;
+  // Save to history (always, even invalid)
+  const entry = {
+    timestamp: Date.now(),
+    result: JSON.parse(JSON.stringify(result)),
+    bands: { ...currentBands },
+    profile: { ...currentProfile }
+  };
+  addHistoryEntry(entry);
+  renderResults(result, currentBands);
+  renderHomeSummary();
+  switchTab("Results");
+});
+
+// ===== HOME START SCANNING =====
+document.getElementById("homeScanBtn").addEventListener("click", () => {
+  switchTab("Scan");
+});
+let result;
+
+// ===== LANG TOGGLE =====
+document.querySelectorAll(".lang-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    setLang(btn.dataset.lang);
+  });
+});
+
+// ===== BMI CALCULATOR =====
+function openBmiCalc() {
+  document.getElementById("bmiOverlay").classList.add("show");
+  document.getElementById("bmiResult").classList.remove("show");
+  document.getElementById("bmiWeight").value = "";
+  document.getElementById("bmiHeight").value = "";
+  document.getElementById("bmiWeight").focus();
+}
+function closeBmiCalc() {
+  document.getElementById("bmiOverlay").classList.remove("show");
+}
+
+// ===== CAMERA SCANNER =====
+const camStream = { current: null };
+const LINE_FRACTIONS = [0.106, 0.216, 0.373, 0.473]; // L1-L4 as fraction of strip window
+
+// Lane-indexed expected scores when a line is present (score by position, not intensity)
+const LANE_SCORES = [0, 1, 2, 3]; // L1=Hb→0, L2=Fn→1, L3=Bf→2, L4=BactControl→3
+
+// Absolute noise floor: any corrected signal below this is considered absent
+const NOISE_THRESHOLD = 1;
+// Absolute minimum corrected signal for a score of 3
+const ABS_FLOOR_3 = 10;
+// Lower threshold for L2 (expected faint line) — score 1 possible at very low signal
+const L2_FLOOR = 0;
+
+function measureRednessAtRow(imgData, w, y) {
+  let rS = 0, gS = 0, bS = 0, n = 0;
+  const xLo = Math.round(w * 0.18), xHi = Math.round(w * 0.82);
+  for (let x = xLo; x < xHi; x += 2) {
+    const i = (y * w + x) * 4;
+    rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
+  }
+  const rA = rS / n, gA = gS / n, bA = bS / n;
+  return { redness: rA - Math.max(gA, bA), brightness: (rA + gA + bA) / 3 };
+}
+
+/**
+ * Compute local background redness from regions surrounding a line position.
+ * Samples above and below the band, skipping the band zone itself.
+ */
+function computeLocalBg(imgData, w, h, cy, bandHeight, bestStart, bestEnd) {
+  const gap = Math.round(bandHeight * 0.5);
+  const aboveStart = Math.max(bestStart, cy - bandHeight - gap);
+  const aboveEnd = Math.max(aboveStart + 1, cy - gap);
+  const belowStart = Math.min(bestEnd, cy + gap + 1);
+  const belowEnd = Math.min(bestEnd, cy + bandHeight + gap);
+
+  let sum = 0, count = 0;
+  for (let y = aboveStart; y < aboveEnd; y += 3) {
+    sum += measureRednessAtRow(imgData, w, y).redness; count++;
+  }
+  for (let y = belowStart; y < belowEnd; y += 3) {
+    sum += measureRednessAtRow(imgData, w, y).redness; count++;
+  }
+  return count > 0 ? sum / count : 0;
+}
+
+/**
+ * Compute dynamic thresholds from all corrected signals in this image.
+ * Returns {midThreshold, highThreshold} based on the observed signal range.
+ */
+function computeDynamicThresholds(allSignals) {
+  // Filter only signals above noise floor — these are "real" bands
+  const real = allSignals.filter(s => s > NOISE_THRESHOLD);
+  if (real.length === 0) {
+    return { midThreshold: NOISE_THRESHOLD + 2, highThreshold: NOISE_THRESHOLD + 5 };
+  }
+
+  const maxSig = Math.max(...real);
+  const minSig = Math.min(...real);
+  const range = maxSig - minSig;
+
+  // If all real signals are very close, space thresholds evenly
+  if (range < 5) {
+    const mid = Math.max(NOISE_THRESHOLD + 1, minSig + 2);
+    const high = Math.max(mid + 1, minSig + 4);
+    return { midThreshold: mid, highThreshold: high };
+  }
+
+  return {
+    midThreshold: minSig + range * 0.3,
+    highThreshold: minSig + range * 0.7,
+  };
+}
+
+/**
+ * Classify a corrected signal into score 0-3 using dynamic thresholds.
+ * Score by lane position, not by ranking across bands.
+ */
+function classifyScore(correctedSignal, midThreshold, highThreshold, laneIndex) {
+  // Lane-specific noise floor: L2 is expected faint, use lower threshold
+  const floor = laneIndex === 1 ? L2_FLOOR : NOISE_THRESHOLD;
+  if (correctedSignal < floor) return 0;
+
+  // Score comes from the lane's expected position, not from absolute intensity
+  const expectedScore = LANE_SCORES[laneIndex];
+
+  // If signal is very faint, only allow score 0 or 1
+  if (correctedSignal < midThreshold) return Math.min(1, expectedScore);
+
+  // Mid strength — score up to 2
+  if (correctedSignal < highThreshold) return Math.min(2, expectedScore);
+
+  // Strong signal — allow up to 3, but only if above absolute floor
+  if (correctedSignal >= highThreshold && correctedSignal >= ABS_FLOOR_3) return Math.min(3, expectedScore);
+  if (correctedSignal >= highThreshold) return Math.min(2, expectedScore);
+
+  return 0;
+}
+
+/**
+ * Check adequacy using L4 (BactControl).
+ * L4 must have a clear signal for the test to be valid.
+ */
+function checkAdequacy(l4Signal) {
+  // Adequacy threshold: L4 must be at least 2x noise floor
+  const ADEQUACY_THRESHOLD = NOISE_THRESHOLD * 2;
+  if (l4Signal < NOISE_THRESHOLD) {
+    return { valid: false, confidence: 'low', message: 'Control line (L4) not detected — test may be invalid. Ensure good lighting and focus.' };
+  }
+  if (l4Signal < ADEQUACY_THRESHOLD) {
+    return { valid: true, confidence: 'low', message: 'Control line (L4) is faint — results may be less reliable.' };
+  }
+  return { valid: true, confidence: 'high', message: '' };
+}
+
+function scanImage(imgData, w, h) {
+  // Step 1: Build brightness profile to find the strip window
+  const profile = [];
+  for (let y = 0; y < h; y += 2) {
+    let rS = 0, gS = 0, bS = 0, n = 0;
+    const xLo = Math.round(w * 0.15), xHi = Math.round(w * 0.85);
+    for (let x = xLo; x < xHi; x += 3) {
+      const i = (y * w + x) * 4;
+      rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
+    }
+    profile.push({ y, bright: (rS / n + gS / n + bS / n) / 3 });
+  }
+
+  // Step 2: Find the longest sustained bright region (strip window)
+  const brightThreshold = 120;
+  let bestStart = 0, bestEnd = h - 1, bestLen = 0;
+  let curStart = -1;
+  for (const p of profile) {
+    if (p.bright > brightThreshold) {
+      if (curStart === -1) curStart = p.y;
+    } else {
+      if (curStart !== -1) {
+        const len = p.y - curStart;
+        if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = p.y; }
+        curStart = -1;
+      }
+    }
+  }
+  if (curStart !== -1) {
+    const len = h - curStart;
+    if (len > bestLen) { bestStart = curStart; bestEnd = h - 1; }
+  }
+  if (bestLen < h * 0.05) {
+    bestStart = Math.round(h * 0.2);
+    bestEnd = Math.round(h * 0.8);
+  }
+
+  const windowH = bestEnd - bestStart;
+
+  // Step 3: Calculate 4 line Y-positions from calibrated fractions
+  const linePositions = LINE_FRACTIONS.map(f =>
+    Math.max(bestStart + 5, Math.min(bestEnd - 5, Math.round(bestStart + windowH * f)))
+  );
+
+  // Step 4: Measure raw redness in each A/B sub-zone and local background per lane
+  const bandHeight = Math.round(windowH * 0.06);
+  const laneData = [];
+  const names = ['L1', 'L2', 'L3', 'L4'];
+
+  for (let li = 0; li < 4; li++) {
+    const cy = linePositions[li];
+    // A zone biased above center, B zone biased below center, with overlap
+    const aStart = Math.max(bestStart, cy - 12);
+    const aEnd = Math.max(aStart + 1, Math.min(bestEnd, cy + 4));
+    const bStart = Math.max(bestStart, cy - 4);
+    const bEnd = Math.max(bStart + 1, Math.min(bestEnd, cy + 12));
+
+    let aBest = -999, bBest = -999;
+    for (let yy = aStart; yy < aEnd; yy += 2) {
+      const m = measureRednessAtRow(imgData, w, yy);
+      if (m.redness > aBest) aBest = m.redness;
+    }
+    for (let yy = bStart; yy < bEnd; yy += 2) {
+      const m = measureRednessAtRow(imgData, w, yy);
+      if (m.redness > bBest) bBest = m.redness;
+    }
+
+    // Compute local background for this lane
+    const localBg = computeLocalBg(imgData, w, h, cy, bandHeight, bestStart, bestEnd);
+
+    // Corrected signal = band redness minus local background
+    const aCorrected = Math.max(0, aBest - localBg);
+    const bCorrected = Math.max(0, bBest - localBg);
+
+    laneData.push({
+      li, name: names[li], localBg: Math.round(localBg * 10) / 10,
+      a: { raw: aBest, corrected: aCorrected },
+      b: { raw: bBest, corrected: bCorrected },
+    });
+  }
+
+  // Step 5: Compute dynamic thresholds from all corrected signals
+  const allCorrected = [];
+  for (const ld of laneData) {
+    allCorrected.push(ld.a.corrected);
+    allCorrected.push(ld.b.corrected);
+  }
+  const { midThreshold, highThreshold } = computeDynamicThresholds(allCorrected);
+
+  // Step 6: Score each lane using lane-indexed scoring + dynamic thresholds
+  const results = [];
+  for (const ld of laneData) {
+    const aScore = classifyScore(ld.a.corrected, midThreshold, highThreshold, ld.li);
+    const bScore = classifyScore(ld.b.corrected, midThreshold, highThreshold, ld.li);
+    results.push({
+      name: ld.name + 'A',
+      redness: Math.round(ld.a.raw * 10) / 10,
+      corrected: Math.round(ld.a.corrected * 10) / 10,
+      localBg: ld.localBg,
+      value: aScore,
+      markers: [ld.name + 'a'],
+    });
+    results.push({
+      name: ld.name + 'B',
+      redness: Math.round(ld.b.raw * 10) / 10,
+      corrected: Math.round(ld.b.corrected * 10) / 10,
+      localBg: ld.localBg,
+      value: bScore,
+      markers: [ld.name + 'b'],
+    });
+  }
+
+  // Step 7: Check L4 adequacy (BactControl)
+  const l4A = results[6], l4B = results[7];
+  const l4Signal = Math.max(l4A.corrected, l4B.corrected);
+  const adequacy = checkAdequacy(l4Signal);
+  results.adequacy = adequacy;
+
+  // Attach thresholds for diagnostics
+  results.thresholds = { noiseThreshold: NOISE_THRESHOLD, midThreshold: Math.round(midThreshold * 10) / 10, highThreshold: Math.round(highThreshold * 10) / 10, absFloor3: ABS_FLOOR_3 };
+
+  return results;
+}
+
+function openCamera() {
+  const overlay = document.getElementById("cameraOverlay");
+  overlay.classList.add("show");
+  // Reset UI
+  document.getElementById("camResult").style.display = "none";
+  document.getElementById("camCaptureBtn").style.display = "none";
+  document.getElementById("camPlaceholder").style.display = "flex";
+  document.getElementById("camVideo").style.display = "none";
+  document.getElementById("camGuide").style.display = "none";
+  document.getElementById("camBtnRow").style.display = "flex";
+  document.getElementById("camAcceptRow").style.display = "none";
+  document.getElementById("camFileInput").value = "";
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    document.getElementById("camPlaceholder").innerHTML = '<p style="color:#b83a36;font-size:13px;">Camera not available</p>';
+    return;
+  }
+  // iOS Safari: try exact environment first, fallback to any camera
+  const constraints = [{ video: { facingMode: { exact: "environment" } } }, { video: { facingMode: "environment" } }, { video: true }];
+  function tryCam(idx) {
+    if (idx >= constraints.length) {
+      document.getElementById("camPlaceholder").innerHTML = '<p style="color:#b83a36;font-size:13px;">Camera blocked by browser</p><p style="color:var(--text-secondary);font-size:12px;margin-top:4px;">Use <strong>Upload Photo</strong> below to select a test strip image</p>';
+      return;
+    }
+    navigator.mediaDevices.getUserMedia(constraints[idx])
+      .then(stream => {
+        camStream.current = stream;
+        const video = document.getElementById("camVideo");
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play().then(() => {
+            video.style.display = "block";
+            document.getElementById("camPlaceholder").style.display = "none";
+            document.getElementById("camCaptureBtn").style.display = "block";
+            document.getElementById("camGuide").style.display = "block";
+          }).catch(() => {});
+        };
+      })
+      .catch(() => tryCam(idx + 1));
+  }
+  tryCam(0);
+}
+
+function closeCamera() {
+  if (camStream.current) { camStream.current.getTracks().forEach(t => t.stop()); camStream.current = null; }
+  document.getElementById("cameraOverlay").classList.remove("show");
+}
+
+function captureAndAnalyze() {
+  const video = document.getElementById("camVideo");
+  const canvas = document.createElement("canvas");
+  const maxDim = 800;
+  const vw = video.videoWidth || 1280;
+  const vh = video.videoHeight || 720;
+  const scale = Math.min(maxDim / vw, maxDim / vh, 1);
+  canvas.width = Math.round(vw * scale);
+  canvas.height = Math.round(vh * scale);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const results = scanImage(imgData, canvas.width, canvas.height);
+  showScanResults(results);
+}
+
+function showScanResults(results) {
+  document.getElementById("camCaptureBtn").style.display = "none";
+  document.getElementById("camResult").style.display = "block";
+  document.getElementById("camProcessing").style.display = "block";
+  document.getElementById("camDetectedVals").style.display = "none";
+  document.getElementById("camNotDetected").style.display = "none";
+  window._scanResults = results;
+  setTimeout(() => {
+    document.getElementById("camProcessing").style.display = "none";
+    if (results.length > 0) {
+      document.getElementById("camDetectedVals").style.display = "block";
+      const list = document.getElementById("camDetectedList");
+
+      // Show confidence/adequacy warning if low
+      const adequacy = results.adequacy || { valid: true, confidence: 'high', message: '' };
+      let warningHtml = '';
+      if (adequacy.confidence !== 'high') {
+        const warnColor = adequacy.valid ? 'var(--orange)' : '#b83a36';
+        warningHtml = '<div style="background:' + warnColor + '15;border:1px solid ' + warnColor + '40;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:' + warnColor + ';">' +
+          '<strong>' + (adequacy.valid ? 'Low Confidence' : 'Warning') + ':</strong> ' + adequacy.message + '</div>';
+      }
+
+      // Show dynamic thresholds for transparency
+      const th = results.thresholds || {};
+      const thHtml = th.midThreshold !== undefined
+        ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
+          'Thresholds: noise≥' + th.noiseThreshold + ' | mid≥' + th.midThreshold + ' | high≥' + th.highThreshold + ' | floor₃≥' + th.absFloor3 +
+          '</div>'
+        : '';
+
+      let html = warningHtml + thHtml;
+      for (let i = 0; i < 8; i += 2) {
+        const a = results[i], b = results[i + 1];
+        const lineLabel = a.name.charAt(0) + a.name.charAt(1);
+        const valColor = (v) => v >= 2 ? 'var(--green)' : v === 1 ? 'var(--orange)' : 'var(--text-tertiary)';
+        // Diagnostic: show raw / corrected / localBg as small text
+        const diagHtml = (a.corrected !== undefined)
+          ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
+            'r=' + a.redness + ' bg=' + a.localBg + ' c=' + a.corrected +
+            '</span>'
+          : '';
+        const diagHtmlB = (b.corrected !== undefined)
+          ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
+            'r=' + b.redness + ' bg=' + b.localBg + ' c=' + b.corrected +
+            '</span>'
+          : '';
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
+          '<div style="display:flex;align-items:center;gap:4px;min-width:28px;"><span style="font-weight:600;">' + lineLabel + '</span></div>' +
+          '<div style="display:flex;align-items:center;gap:4px;">' +
+            '<span style="font-size:12px;color:var(--text-tertiary);">A:</span>' +
+            '<span style="font-weight:600;color:' + valColor(a.value) + ';min-width:16px;text-align:center;">' + a.value + '</span>' + diagHtml +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:4px;margin-left:8px;">' +
+            '<span style="font-size:12px;color:var(--text-tertiary);">B:</span>' +
+            '<span style="font-weight:600;color:' + valColor(b.value) + ';min-width:16px;text-align:center;">' + b.value + '</span>' + diagHtmlB +
+          '</div>' +
+        '</div>';
+      }
+      list.innerHTML = html;
+    } else {
+      document.getElementById("camNotDetected").style.display = "block";
+    }
+    document.getElementById("camBtnRow").style.display = "none";
+    document.getElementById("camAcceptRow").style.display = "flex";
+  }, 500);
+}
+
+function analyzeUploadedFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement("canvas");
+      const maxDim = 800;
+      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      const results = scanImage(imgData, canvas.width, canvas.height);
+      showScanResults(results);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function acceptScanResults() {
+  const results = window._scanResults || [];
+  for (const r of results) {
+    for (const mk of r.markers) {
+      currentBands[mk] = r.value;
+    }
+  }
+  renderStripGrid();
+  closeCamera();
+}
+// ===== INIT =====
+setLang(currentLang);
+renderStripGrid();
+renderProfileForm();
+renderHomeSummary();
+renderInsights();
+renderHistory();
+
+// === Event listeners that depend on rendered elements ===
+// BMI
+document.getElementById("bmiCalcBtn").addEventListener("click", openBmiCalc);
+document.getElementById("bmiCancelBtn").addEventListener("click", closeBmiCalc);
+document.getElementById("bmiOverlay").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeBmiCalc();
+});
+document.getElementById("bmiApplyBtn").addEventListener("click", () => {
+  const w = parseFloat(document.getElementById("bmiWeight").value);
+  const h = parseFloat(document.getElementById("bmiHeight").value);
+  const resultEl = document.getElementById("bmiResult");
+  const numEl = document.getElementById("bmiResultNumber");
+  if (!w || !h || w <= 0 || h <= 0) {
+    numEl.textContent = "—";
+    resultEl.style.display = "block";
+    resultEl.style.background = "rgba(214,79,74,0.08)";
+    resultEl.style.color = "#b83a36";
+    numEl.style.color = "#b83a36";
+    resultEl.querySelector("div:first-child").textContent = t("invalid") + " " + t("bmiWeight");
+    return;
+  }
+  const bmi = w / (h * h);
+  const rounded = Math.round(bmi * 10) / 10;
+  document.getElementById("pfBmi").value = rounded;
+  numEl.textContent = rounded;
+  resultEl.style.display = "block";
+  resultEl.style.background = "rgba(56,184,122,0.08)";
+  numEl.style.color = "var(--accent-dim)";
+  resultEl.querySelector("div:first-child").textContent = t("yourBmi");
+  setTimeout(closeBmiCalc, 1200);
+});
+// Camera
+document.getElementById("scanCameraBtn").addEventListener("click", openCamera);
+document.getElementById("camCloseBtn").addEventListener("click", closeCamera);
+document.getElementById("cameraOverlay").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) closeCamera();
+});
+document.getElementById("camCaptureBtn").addEventListener("click", captureAndAnalyze);
+document.getElementById("camAcceptBtn").addEventListener("click", acceptScanResults);
+document.getElementById("camRetakeBtn").addEventListener("click", () => {
+  document.getElementById("camResult").style.display = "none";
+  document.getElementById("camBtnRow").style.display = "flex";
+  document.getElementById("camAcceptRow").style.display = "none";
+  document.getElementById("camCaptureBtn").style.display = camStream.current ? "block" : "none";
+  document.getElementById("camUploadBtn").style.display = "";
+  // Reset file input so selecting the same file re-fires the change event
+  document.getElementById("camFileInput").value = "";
+  // Restore proper video/placeholder state
+  if (camStream.current) {
+    document.getElementById("camVideo").style.display = "block";
+    document.getElementById("camPlaceholder").style.display = "none";
+    document.getElementById("camGuide").style.display = "block";
+  } else {
+    document.getElementById("camVideo").style.display = "none";
+    document.getElementById("camPlaceholder").style.display = "flex";
+    document.getElementById("camGuide").style.display = "none";
+  }
+});
+document.getElementById("camUploadBtn").addEventListener("click", () => {
+  document.getElementById("camFileInput").click();
+});
+document.getElementById("camFileInput").addEventListener("change", (e) => {
+  if (e.target.files && e.target.files[0]) {
+    analyzeUploadedFile(e.target.files[0]);
+  }
+});
+</script>
+</body>
+</html>
