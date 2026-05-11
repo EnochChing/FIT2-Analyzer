@@ -1626,8 +1626,8 @@ function measureLocalBg(imgData, w, y1, y2) {
   return n > 0 ? sum / n : 0;
 }
 
-function measurePeakSignal(imgData, w, profile, peakIdx, yMin, yMax, halfHeight, bgGap) {
-  // Measure peak redness above local background
+function measurePeakSignal(imgData, w, profile, peakIdx, yMin, yMax, halfHeight, bgGap, whiteRef) {
+  // Measure peak redness above local background, with white reference as floor
   const peakY = profile[peakIdx].y;
   const searchY1 = Math.max(yMin, peakY - halfHeight);
   const searchY2 = Math.min(yMax, peakY + halfHeight);
@@ -1647,22 +1647,25 @@ function measurePeakSignal(imgData, w, profile, peakIdx, yMin, yMax, halfHeight,
       }
     }
   }
-  const bgLevel = bgN > 0 ? bgSum / bgN : 0;
+  const localBg = bgN > 0 ? bgSum / bgN : 0;
+  // Effective background = max of local background and white reference
+  const effBg = Math.max(localBg, whiteRef || 0);
 
-  // Find max redness above background in search zone
+  // Find max redness above effective background in search zone
   let bestRaw = -999, bestAboveBg = -999;
   for (let y = searchY1; y < searchY2; y += 2) {
     const m = measureRednessAtRow(imgData, w, y);
     if (m.redness > bestRaw) {
       bestRaw = m.redness;
-      bestAboveBg = m.redness - bgLevel;
+      bestAboveBg = m.redness - effBg;
     }
   }
 
   return {
     raw: bestRaw > -999 ? bestRaw : 0,
     corrected: Math.max(0, bestAboveBg),
-    bg: Math.round(bgLevel * 10) / 10,
+    bg: Math.round(localBg * 10) / 10,
+    whiteRef: Math.round((whiteRef || 0) * 10) / 10,
   };
 }
 
@@ -1711,68 +1714,106 @@ function scanImage(imgData, w, h) {
   const rawProfile = extractProfile(imgData, w, h, bestStart, bestEnd);
   const smooth = smoothProfile(rawProfile, 11);
 
-  // Step 3: Find peaks in the smoothed profile
-  const stdRedness = smooth.reduce((s, p) => s + p.redness * p.redness, 0) / smooth.length;
-  const noiseFloor = Math.max(1.0, Math.sqrt(stdRedness) * 1.5);
-  const allPeaks = findProfilePeaks(smooth, noiseFloor, Math.max(8, Math.round(windowH * 0.03)));
+  // Step 3: Find the white reference — the membrane's own redness under current lighting.
+  // Use the 10th percentile of profile redness (robust to outliers, represents clean white membrane).
+  const rednessVals = smooth.map(p => p.redness).sort((a, b) => a - b);
+  const whiteRef = rednessVals[Math.floor(rednessVals.length * 0.10)] || 0;
 
-  // Sort by redness descending, take top 4
-  allPeaks.sort((a, b) => b.redness - a.redness);
-  const topPeaks = allPeaks.slice(0, 4);
-  // Sort top 4 by Y position (top to bottom)
-  topPeaks.sort((a, b) => a.y - b.y);
+  // Step 4: Find peaks in the smoothed profile (above white reference)
+  const stdRedness = smooth.reduce((s, p) => s + p.redness * p.redness, 0) / smooth.length;
+  const noiseFloor = Math.max(1.0, Math.sqrt(stdRedness) * 1.5, whiteRef + 2);
+  // Use small minDist to catch tight A/B double bands
+  const findDist = Math.max(4, Math.round(windowH * 0.012));
+  const allPeaks = findProfilePeaks(smooth, noiseFloor, findDist);
+
+  // Lane-level dedup: merge peaks too close to be separate lanes, keeping the tallest
+  const laneDist = Math.max(12, Math.round(windowH * 0.04));
+  const deduped = [];
+  const sortedByH = [...allPeaks].sort((a, b) => b.redness - a.redness);
+  for (const p of sortedByH) {
+    let tooClose = false;
+    for (const d of deduped) {
+      if (Math.abs(p.y - d.y) < laneDist) { tooClose = true; break; }
+    }
+    if (!tooClose) deduped.push(p);
+  }
+
+  // Assign peaks to lanes: L1=topmost, L4=bottommost
+  deduped.sort((a, b) => a.y - b.y);
+  const assignedPeaks = deduped.slice(0, 4); // at most 4, in Y order
 
   const names = ['L1', 'L2', 'L3', 'L4'];
   const results = [];
   const halfH = Math.max(6, Math.round(windowH * 0.018));
   const bgGap = Math.max(4, Math.round(windowH * 0.02));
+  const peakCount = deduped.length;
+  results._peakCount = peakCount;
 
-  // Step 4: Measure signal at each detected peak
+  // Step 5: Measure each lane using its assigned peak (if any)
   for (let li = 0; li < 4; li++) {
     let sigA, sigB;
 
-    if (li < topPeaks.length) {
-      const pk = topPeaks[li];
+    if (li < assignedPeaks.length) {
+      const pk = assignedPeaks[li];
 
       // B band: main peak signal
-      sigB = measurePeakSignal(imgData, w, rawProfile, pk.idx, bestStart, bestEnd, halfH, bgGap);
+      sigB = measurePeakSignal(imgData, w, rawProfile, pk.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
 
-      // A band: look for a secondary peak above the main one, or measure at offset
-      const offsetY = pk.y - Math.max(8, Math.round(windowH * 0.025));
+      // A band: look for a nearby peak above this one (not assigned to another lane)
       let foundSecondary = false;
-      for (const sp of allPeaks) {
-        if (sp.y < pk.y && (pk.y - sp.y) < halfH * 3 && sp.y !== pk.y) {
-          sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap);
-          foundSecondary = true;
-          break;
+      for (const sp of deduped) {
+        if (sp.y < pk.y && (pk.y - sp.y) < halfH * 4 && sp.idx !== pk.idx) {
+          // Only use if not already an assigned lane peak or is very close (sub-band)
+          const isAssigned = assignedPeaks.some(ap => ap.idx === sp.idx);
+          if (!isAssigned || (pk.y - sp.y) < halfH * 2) {
+            sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
+            foundSecondary = true;
+            break;
+          }
+        }
+      }
+      if (!foundSecondary) {
+        // Also check allPeaks for small secondary peaks not in deduped
+        for (const sp of allPeaks) {
+          if (sp.y < pk.y && (pk.y - sp.y) < halfH * 3 && sp.y !== pk.y) {
+            const isAssigned = assignedPeaks.some(ap => ap.idx === sp.idx);
+            if (!isAssigned) {
+              sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
+              foundSecondary = true;
+              break;
+            }
+          }
         }
       }
       if (!foundSecondary) {
         // Measure at offset position
+        const offsetY = pk.y - Math.max(8, Math.round(windowH * 0.025));
         let bestRaw = -999, bestAboveBg = -999;
-        const bgLevel = sigB.bg;
+        const effBg = Math.max(sigB.bg, whiteRef);
         const aY1 = Math.max(bestStart, offsetY - halfH);
         const aY2 = Math.min(bestEnd, offsetY + halfH);
         for (let y = aY1; y < aY2; y += 2) {
           const m = measureRednessAtRow(imgData, w, y);
           if (m.redness > bestRaw) {
             bestRaw = m.redness;
-            bestAboveBg = m.redness - bgLevel;
+            bestAboveBg = m.redness - effBg;
           }
         }
         sigA = {
           raw: bestRaw > -999 ? bestRaw : 0,
           corrected: Math.max(0, bestAboveBg),
-          bg: bgLevel,
+          bg: sigB.bg,
+          whiteRef: sigB.whiteRef,
         };
       }
     } else {
-      // Fewer than 4 peaks detected — use fallback fractions for missing ones
+      // Fewer than 4 peaks — use fallback fraction for this lane
       const fallbackY = Math.round(bestStart + windowH * [0.106, 0.216, 0.373, 0.473][li]);
-      sigB = measurePeakSignal(imgData, w, rawProfile,
-        rawProfile.findIndex(p => p.y >= fallbackY), bestStart, bestEnd, halfH, bgGap);
-      if (sigB.raw <= 0) sigB = { raw: 0, corrected: 0, bg: 0 };
-      sigA = { raw: 0, corrected: 0, bg: sigB.bg };
+      let idx = rawProfile.findIndex(p => p.y >= fallbackY);
+      if (idx < 0) idx = Math.floor(rawProfile.length / 2);
+      sigB = measurePeakSignal(imgData, w, rawProfile, idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
+      if (sigB.raw <= 0) sigB = { raw: 0, corrected: 0, bg: 0, whiteRef: Math.round(whiteRef * 10) / 10 };
+      sigA = { raw: 0, corrected: 0, bg: sigB.bg, whiteRef: sigB.whiteRef };
     }
 
     results.push({
@@ -1780,6 +1821,7 @@ function scanImage(imgData, w, h) {
       raw: sigA.raw,
       corrected: Math.round(Math.max(0, sigA.corrected) * 10) / 10,
       bg: sigA.bg,
+      whiteRef: sigA.whiteRef,
       markers: [names[li] + 'a'],
     });
     results.push({
@@ -1787,6 +1829,7 @@ function scanImage(imgData, w, h) {
       raw: sigB.raw,
       corrected: Math.round(Math.max(0, sigB.corrected) * 10) / 10,
       bg: sigB.bg,
+      whiteRef: sigB.whiteRef,
       markers: [names[li] + 'b'],
     });
   }
@@ -1804,6 +1847,7 @@ function scanImage(imgData, w, h) {
   }
 
   results.refMax = Math.round(refMax * 10) / 10;
+  results.whiteRef = Math.round(whiteRef * 10) / 10;
 
   // Step 6: Adequacy — check if strongest signal is meaningful
   const allCorrected = results.map(r => r.corrected).filter(v => v > 0);
@@ -1909,9 +1953,12 @@ function showScanResults(results) {
 
       // Show relative scoring reference
       const refMax = results.refMax || 0;
+      const whiteRef = results.whiteRef || 0;
+      const peakCount = results._peakCount || '?';
       const thHtml = refMax > 0
         ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'Relative scoring (max reference = ' + refMax.toFixed(1) + ') &mdash; 1:1&ndash;35% | 2:36&ndash;70% | 3:71&ndash;100%' +
+          'Peaks: ' + peakCount + ' | max=' + refMax.toFixed(1) + ' | white=' + whiteRef.toFixed(1) +
+          ' &mdash; 1:1&ndash;35% | 2:36&ndash;70% | 3:71&ndash;100%' +
           '</div>'
         : '';
 
@@ -1922,11 +1969,11 @@ function showScanResults(results) {
         const valColor = (v) => v >= 2 ? 'var(--green)' : v === 1 ? 'var(--orange)' : 'var(--text-tertiary)';
         const diagA = (a.bg !== undefined)
           ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
-            'raw=' + a.raw.toFixed(1) + ' bg=' + a.bg.toFixed(1) + '</span>'
+            'raw=' + a.raw.toFixed(1) + ' bg=' + a.bg.toFixed(1) + ' w=' + (a.whiteRef !== undefined ? a.whiteRef.toFixed(1) : '?') + '</span>'
           : '';
         const diagB = (b.bg !== undefined)
           ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
-            'raw=' + b.raw.toFixed(1) + ' bg=' + b.bg.toFixed(1) + '</span>'
+            'raw=' + b.raw.toFixed(1) + ' bg=' + b.bg.toFixed(1) + ' w=' + (b.whiteRef !== undefined ? b.whiteRef.toFixed(1) : '?') + '</span>'
           : '';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
           '<div style="display:flex;align-items:center;gap:4px;min-width:28px;"><span style="font-weight:600;">' + lineLabel + '</span></div>' +
