@@ -470,6 +470,26 @@
   .bmi-result.show { display: block; }
   .bmi-result .bmi-number { font-size: 28px; font-weight: 700; color: var(--accent-dim); }
   .bmi-modal .btn-row { gap: 8px; }
+
+/* Calibration score buttons */
+.cal-score-btn {
+  width:28px;height:28px;border-radius:6px;
+  border:0.5px solid rgba(0,0,0,0.1);
+  background:#fff;
+  font-size:12px;font-weight:600;
+  color:var(--text-secondary);
+  cursor:pointer;
+  transition:all 0.12s;
+  -webkit-tap-highlight-color:transparent;
+  padding:0;font-family:inherit;line-height:1;
+}
+.cal-score-btn:active { transform:scale(0.88); }
+.cal-score-btn.cal-score-selected {
+  background:linear-gradient(135deg,var(--accent),var(--accent-light));
+  color:#fff;
+  border-color:var(--accent);
+  box-shadow:0 1px 4px rgba(59,130,196,0.25);
+}
 </style>
 </head>
 <body>
@@ -642,11 +662,31 @@
         <button class="btn btn-secondary" id="camUploadBtn">Upload Photo</button>
         <button class="btn btn-secondary" id="camCloseBtn">Close Camera</button>
       </div>
+      <div style="text-align:center;display:flex;" id="camCalibrateRow">
+        <button id="camCalibrateBtn" style="flex:1;background:none;border:none;font-size:12px;color:var(--accent);cursor:pointer;padding:6px 8px;text-decoration:underline;font-family:inherit;">Calibrate Scanner</button>
+      </div>
       <div class="btn-row" id="camAcceptRow" style="display:none;">
         <button class="btn btn-primary" id="camAcceptBtn" style="flex:1;">Use Detected Values</button>
         <button class="btn btn-secondary" id="camRetakeBtn">Retake</button>
       </div>
       <input type="file" accept="image/*" id="camFileInput" style="display:none;">
+      <!-- Calibration Panel -->
+      <div id="camCalibration" style="display:none;">
+        <div style="background:rgba(59,130,196,0.06);border-radius:10px;padding:12px;margin-bottom:12px;">
+          <p style="font-size:13px;font-weight:600;margin-bottom:6px;">Calibration</p>
+          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;" id="calStatus">Upload a calibration card image to set reference values.</p>
+          <div id="calScoreGrid" style="display:grid;gap:4px;margin-bottom:8px;font-size:13px;"></div>
+          <div class="btn-row" style="gap:6px;margin-top:4px;">
+            <button class="btn btn-secondary" id="calUploadBtn" style="flex:1;font-size:12px;padding:6px;">Upload Cal Image</button>
+            <button class="btn btn-primary" id="calSaveBtn" style="flex:1;font-size:12px;padding:6px;display:none;">Save Calibration</button>
+          </div>
+          <div class="btn-row" style="gap:6px;margin-top:4px;">
+            <button class="btn btn-secondary" id="calBackBtn" style="flex:1;font-size:12px;padding:6px;">Back to Camera</button>
+            <button class="btn btn-secondary" id="calClearBtn" style="font-size:12px;padding:6px;">Clear</button>
+          </div>
+        </div>
+      </div>
+      <input type="file" accept="image/*" id="calFileInput" style="display:none;">
     </div>
   </div>
 
@@ -1535,9 +1575,156 @@ function closeBmiCalc() {
 const camStream = { current: null };
 const LINE_FRACTIONS = [0.106, 0.216, 0.373, 0.473]; // L1-L4 as fraction of strip window
 
-// Unified absolute thresholds for all 8 markers (A/B × 4 lanes)
-// Calibrated from reference strips: corrected signal = bandRedness - membraneBackground
-const SCORE_THRESHOLDS = [2, 8, 25]; // ≤2→0, 2-8→1, 8-25→2, >25→3
+// Unified thresholds for all 8 markers — same standard for every lane.
+// Applied directly to raw redness (R - max(G,B)). No per-lane factors, no background subtraction.
+const SCORE_THRESHOLDS = [2, 7, 20]; // <2→0, 2-7→1, 7-20→2, >20→3
+
+function classifyScore(corrected) {
+  if (corrected < SCORE_THRESHOLDS[0]) return 0;
+  if (corrected < SCORE_THRESHOLDS[1]) return 1;
+  if (corrected < SCORE_THRESHOLDS[2]) return 2;
+  return 3;
+}
+
+// ===== CALIBRATION =====
+const CAL_KEY = 'fit2_calibration_v3';
+const DEFAULT_CAL_SCORES = { L1A:0, L1B:0, L2A:1, L2B:1, L3A:2, L3B:2, L4A:3, L4B:3 };
+
+function getCalibration() {
+  try { return JSON.parse(localStorage.getItem(CAL_KEY)); }
+  catch { return null; }
+}
+function saveCalibrationData(data) {
+  localStorage.setItem(CAL_KEY, JSON.stringify(data));
+}
+function clearCalibrationData() {
+  localStorage.removeItem(CAL_KEY);
+}
+
+function classifyWithCalibration(redness, markerName) {
+  if (redness < SCORE_THRESHOLDS[0]) return 0;
+  if (window._calibrationMode) return classifyScore(redness);
+  const cal = getCalibration();
+  if (!cal || !cal[markerName]) return classifyScore(redness);
+  const d = cal[markerName];
+  if (!d || d.expectedScore === 0 || !d.redness || d.redness <= 0) return classifyScore(redness);
+  return Math.min(3, Math.round(redness / d.redness * d.expectedScore));
+}
+
+function getDefaultCalScores() {
+  return Object.assign({}, DEFAULT_CAL_SCORES);
+}
+
+function openCalibration() {
+  document.getElementById('camTitle').textContent = 'Calibrate Scanner';
+  document.getElementById('camSub').textContent = 'Upload a calibration card image and assign expected scores.';
+  document.getElementById('camVideo').style.display = 'none';
+  document.getElementById('camPlaceholder').style.display = 'none';
+  document.getElementById('camGuide').style.display = 'none';
+  document.getElementById('camCaptureBtn').style.display = 'none';
+  document.getElementById('camBtnRow').style.display = 'none';
+  document.getElementById('camCalibrateRow').style.display = 'none';
+  document.getElementById('camAcceptRow').style.display = 'none';
+  document.getElementById('camResult').style.display = 'none';
+  if (camStream.current) {
+    camStream.current.getTracks().forEach(t => t.stop());
+    camStream.current = null;
+  }
+  document.getElementById('camCalibration').style.display = 'block';
+  const cal = getCalibration();
+  document.getElementById('calStatus').textContent = cal
+    ? 'Calibration active (' + Object.keys(cal).length + ' markers). Upload new image to update.'
+    : 'Upload a calibration card image to set reference values.';
+}
+
+function closeCalibration() {
+  document.getElementById('camCalibration').style.display = 'none';
+  document.getElementById('camTitle').textContent = 'Scan Test Strip';
+  document.getElementById('camSub').textContent = 'Position the test strip window within the guide and tap Capture.';
+  document.getElementById('camBtnRow').style.display = 'flex';
+  document.getElementById('camCalibrateRow').style.display = 'flex';
+  document.getElementById('camPlaceholder').style.display = 'flex';
+  document.getElementById('camFileInput').value = '';
+  document.getElementById('calFileInput').value = '';
+  window._calibrationMode = false;
+}
+
+function handleCalibrationUpload(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      const maxDim = 800;
+      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+      window._calibrationMode = true;
+      const results = scanImage(imgData, canvas.width, canvas.height);
+      window._calibrationMode = false;
+      window._calResultsMap = {};
+      for (const r of results) {
+        window._calResultsMap[r.name] = r.corrected !== undefined ? r.corrected : Math.max(0, r.redness || 0);
+      }
+      document.getElementById('calStatus').textContent = 'Calibration image scanned. Verify redness values and adjust scores below, then tap Save.';
+      renderCalibrationGrid(results);
+      document.getElementById('calSaveBtn').style.display = '';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function renderCalibrationGrid(results) {
+  const grid = document.getElementById('calScoreGrid');
+  const defScores = getDefaultCalScores();
+  let html = '<div style="display:flex;align-items:center;gap:4px;padding:2px 0;font-size:11px;color:var(--text-tertiary);border-bottom:1px solid rgba(0,0,0,0.06);">' +
+    '<span style="min-width:30px;">Marker</span>' +
+    '<span style="min-width:38px;">Value</span>' +
+    '<span style="margin-left:auto;">Score</span></div>';
+  for (const r of results) {
+    const def = defScores[r.name] !== undefined ? defScores[r.name] : 0;
+    const val = r.corrected !== undefined ? r.corrected : Math.max(0, r.redness || 0);
+    html += '<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
+      '<span style="font-size:12px;font-weight:600;min-width:30px;">' + r.name + '</span>' +
+      '<span style="font-size:11px;color:var(--text-tertiary);min-width:38px;">' + val.toFixed(1) + '</span>' +
+      '<div style="display:flex;gap:2px;margin-left:auto;">' +
+      [0,1,2,3].map(function(s) {
+        return '<button class="cal-score-btn' + (s === def ? ' cal-score-selected' : '') + '" data-marker="' + r.name + '" data-score="' + s + '">' + s + '</button>';
+      }).join('') +
+      '</div></div>';
+  }
+  grid.innerHTML = html;
+}
+
+function saveCalibration() {
+  const btns = document.querySelectorAll('#calScoreGrid .cal-score-btn.cal-score-selected');
+  if (!btns.length) {
+    document.getElementById('calStatus').textContent = 'No scores selected. Upload a calibration image first.';
+    return;
+  }
+  const cal = {};
+  for (let i = 0; i < btns.length; i++) {
+    const marker = btns[i].dataset.marker;
+    const score = parseInt(btns[i].dataset.score);
+    const redness = window._calResultsMap && window._calResultsMap[marker] !== undefined
+      ? window._calResultsMap[marker] : 0;
+    cal[marker] = { redness: Math.round(redness * 10) / 10, expectedScore: score };
+  }
+  saveCalibrationData(cal);
+  document.getElementById('calStatus').textContent = 'Calibration saved! (' + Object.keys(cal).length + ' markers).';
+}
+
+function clearCalibration() {
+  clearCalibrationData();
+  document.getElementById('calStatus').textContent = 'Calibration cleared. Upload a new calibration image.';
+  document.getElementById('calScoreGrid').innerHTML = '';
+  document.getElementById('calSaveBtn').style.display = 'none';
+  window._calResultsMap = null;
+}
 
 function measureRednessAtRow(imgData, w, y) {
   let rS = 0, gS = 0, bS = 0, n = 0;
@@ -1548,47 +1735,6 @@ function measureRednessAtRow(imgData, w, y) {
   }
   const rA = rS / n, gA = gS / n, bA = bS / n;
   return { redness: rA - Math.max(gA, bA), brightness: (rA + gA + bA) / 3 };
-}
-
-/**
- * Compute the membrane's base redness from the top and bottom edges of the strip window.
- * These areas should be blank membrane (no test lines), giving a stable global reference.
- */
-function computeMembraneBackground(imgData, w, h, bestStart, bestEnd) {
-  const windowH = bestEnd - bestStart;
-  const edgeBand = Math.max(3, Math.round(windowH * 0.05));
-
-  const samples = [];
-  // Sample top edge (above L1 — blank membrane)
-  for (let y = bestStart; y < Math.min(bestEnd, bestStart + edgeBand); y += 2) {
-    samples.push(measureRednessAtRow(imgData, w, y).redness);
-  }
-  // Sample bottom edge (below L4 — blank membrane)
-  for (let y = Math.max(bestStart, bestEnd - edgeBand); y < bestEnd; y += 2) {
-    samples.push(measureRednessAtRow(imgData, w, y).redness);
-  }
-  // Sample middle gap between L2 and L3
-  const midY = Math.round((bestStart + bestEnd) / 2);
-  for (let y = midY - edgeBand; y < midY + edgeBand; y += 3) {
-    if (y >= bestStart && y < bestEnd) {
-      samples.push(measureRednessAtRow(imgData, w, y).redness);
-    }
-  }
-  // Use 10th percentile to avoid outliers (pen marks) corrupting the estimate
-  samples.sort((a, b) => a - b);
-  const idx = Math.max(0, Math.min(samples.length - 1, Math.round(samples.length * 0.1)));
-  return samples.length > 0 ? samples[idx] : 0;
-}
-
-/**
- * Classify corrected signal using unified absolute thresholds.
- * Same standard for all 8 markers — no lane-specific logic.
- */
-function classifyScore(correctedSignal) {
-  if (correctedSignal < SCORE_THRESHOLDS[0]) return 0;
-  if (correctedSignal < SCORE_THRESHOLDS[1]) return 1;
-  if (correctedSignal < SCORE_THRESHOLDS[2]) return 2;
-  return 3;
 }
 
 function scanImage(imgData, w, h) {
@@ -1639,21 +1785,20 @@ function scanImage(imgData, w, h) {
 
   const windowH = bestEnd - bestStart;
 
-  // Step 2: Compute global membrane background (min redness from blank edges)
-  const membraneBg = computeMembraneBackground(imgData, w, h, bestStart, bestEnd);
-
-  // Step 3: Calculate 4 line Y-positions from calibrated fractions
+  // Step 2: Calculate 4 line Y-positions from calibrated fractions
   const linePositions = LINE_FRACTIONS.map(f =>
     Math.max(bestStart + 3, Math.min(bestEnd - 3, Math.round(bestStart + windowH * f)))
   );
 
-  // Step 4: Measure best redness in each A/B sub-zone, correct with global bg
+  // Step 3: Measure best redness in each A/B sub-zone.
+  // Uses raw redness (R - max(G,B)) directly --- no background subtraction.
+  // Same thresholds for all 8 markers.
   const results = [];
   const names = ['L1', 'L2', 'L3', 'L4'];
 
   for (let li = 0; li < 4; li++) {
     const cy = linePositions[li];
-    
+
     // A zone: above center. B zone: below center. Both with overlap.
     const aStart = Math.max(bestStart, cy - 10);
     const aEnd = Math.max(aStart + 1, Math.min(bestEnd, cy + 5));
@@ -1670,44 +1815,40 @@ function scanImage(imgData, w, h) {
       if (m.redness > bBestRaw) bBestRaw = m.redness;
     }
 
-    // Corrected signal = raw band redness minus global membrane background
-    const aCorr = Math.max(0, aBestRaw - membraneBg);
-    const bCorr = Math.max(0, bBestRaw - membraneBg);
+    // Clamp negative redness to 0 (blue-ish background = no signal)
+    const aVal = Math.max(0, aBestRaw);
+    const bVal = Math.max(0, bBestRaw);
 
     results.push({
       name: names[li] + 'A',
       redness: Math.round(aBestRaw * 10) / 10,
-      corrected: Math.round(aCorr * 10) / 10,
-      membraneBg: Math.round(membraneBg * 10) / 10,
-      value: classifyScore(aCorr),
+      corrected: Math.round(aVal * 10) / 10,
+      value: classifyWithCalibration(aVal, names[li] + 'A'),
       markers: [names[li] + 'a'],
     });
     results.push({
       name: names[li] + 'B',
       redness: Math.round(bBestRaw * 10) / 10,
-      corrected: Math.round(bCorr * 10) / 10,
-      membraneBg: Math.round(membraneBg * 10) / 10,
-      value: classifyScore(bCorr),
+      corrected: Math.round(bVal * 10) / 10,
+      value: classifyWithCalibration(bVal, names[li] + 'B'),
       markers: [names[li] + 'b'],
     });
   }
 
-  // Step 5: Check L4 adequacy (BactControl — must be present for valid test)
+  // Step 4: Check L4 adequacy
   const l4A = results[6], l4B = results[7];
   const l4Signal = Math.max(l4A.corrected, l4B.corrected);
-  const l4Valid = l4Signal >= SCORE_THRESHOLDS[0]; // at least score 1
+  const l4Valid = l4Signal >= SCORE_THRESHOLDS[0];
   results.adequacy = {
     valid: l4Valid,
     confidence: l4Valid ? 'high' : 'low',
-    message: l4Valid ? '' : 'Control line (L4) not detected — test may be invalid. Ensure good lighting and focus.',
+    message: l4Valid ? '' : 'Control line (L4) not detected --- test may be invalid. Ensure good lighting and focus.',
   };
 
-  // Attach diagnostics
   results.thresholds = {
     score0: SCORE_THRESHOLDS[0],
     score1: SCORE_THRESHOLDS[1],
     score2: SCORE_THRESHOLDS[2],
-    membraneBg: Math.round(membraneBg * 10) / 10,
   };
 
   return results;
@@ -1723,6 +1864,7 @@ function openCamera() {
   document.getElementById("camVideo").style.display = "none";
   document.getElementById("camGuide").style.display = "none";
   document.getElementById("camBtnRow").style.display = "flex";
+  document.getElementById("camCalibrateRow").style.display = "flex";
   document.getElementById("camAcceptRow").style.display = "none";
   document.getElementById("camFileInput").value = "";
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1758,6 +1900,10 @@ function openCamera() {
 function closeCamera() {
   if (camStream.current) { camStream.current.getTracks().forEach(t => t.stop()); camStream.current = null; }
   document.getElementById("cameraOverlay").classList.remove("show");
+  document.getElementById("camCalibration").style.display = "none";
+  document.getElementById("camTitle").textContent = "Scan Test Strip";
+  document.getElementById("camSub").textContent = "Position the test strip window within the guide and tap Capture.";
+  window._calibrationMode = false;
 }
 
 function captureAndAnalyze() {
@@ -1798,11 +1944,11 @@ function showScanResults(results) {
           '<strong>' + (adequacy.valid ? 'Low Confidence' : 'Warning') + ':</strong> ' + adequacy.message + '</div>';
       }
 
-      // Show dynamic thresholds for transparency
+      // Show unified thresholds
       const th = results.thresholds || {};
       const thHtml = th.score0 !== undefined
         ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'Thresholds: 0&lt;' + th.score0 + ' | 1≥' + th.score1 + ' | 2≥' + th.score2 + ' | 3≥' + th.score2 + '+ | bg=' + th.membraneBg +
+          'thresholds: 0&lt;' + th.score0 + ' | 1≥' + th.score1 + ' | 2≥' + th.score2 + ' | 3≥' + th.score2 +
           '</div>'
         : '';
 
@@ -1811,15 +1957,14 @@ function showScanResults(results) {
         const a = results[i], b = results[i + 1];
         const lineLabel = a.name.charAt(0) + a.name.charAt(1);
         const valColor = (v) => v >= 2 ? 'var(--green)' : v === 1 ? 'var(--orange)' : 'var(--text-tertiary)';
-        // Diagnostic: show raw / corrected / localBg as small text
         const diagHtml = (a.corrected !== undefined)
           ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'r=' + a.redness + ' bg=' + a.membraneBg + ' c=' + a.corrected +
+            'c=' + a.corrected +
             '</span>'
           : '';
         const diagHtmlB = (b.corrected !== undefined)
           ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'r=' + b.redness + ' bg=' + b.membraneBg + ' c=' + b.corrected +
+            'c=' + b.corrected +
             '</span>'
           : '';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
@@ -1839,6 +1984,7 @@ function showScanResults(results) {
       document.getElementById("camNotDetected").style.display = "block";
     }
     document.getElementById("camBtnRow").style.display = "none";
+    document.getElementById("camCalibrateRow").style.display = "none";
     document.getElementById("camAcceptRow").style.display = "flex";
   }, 500);
 }
@@ -1924,6 +2070,7 @@ document.getElementById("camAcceptBtn").addEventListener("click", acceptScanResu
 document.getElementById("camRetakeBtn").addEventListener("click", () => {
   document.getElementById("camResult").style.display = "none";
   document.getElementById("camBtnRow").style.display = "flex";
+  document.getElementById("camCalibrateRow").style.display = "flex";
   document.getElementById("camAcceptRow").style.display = "none";
   document.getElementById("camCaptureBtn").style.display = camStream.current ? "block" : "none";
   document.getElementById("camUploadBtn").style.display = "";
@@ -1947,6 +2094,24 @@ document.getElementById("camFileInput").addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     analyzeUploadedFile(e.target.files[0]);
   }
+});
+// Calibration
+document.getElementById("camCalibrateBtn").addEventListener("click", openCalibration);
+document.getElementById("calUploadBtn").addEventListener("click", function() { document.getElementById("calFileInput").click(); });
+document.getElementById("calFileInput").addEventListener("change", function(e) {
+  if (e.target.files && e.target.files[0]) handleCalibrationUpload(e.target.files[0]);
+});
+document.getElementById("calSaveBtn").addEventListener("click", saveCalibration);
+document.getElementById("calClearBtn").addEventListener("click", clearCalibration);
+document.getElementById("calBackBtn").addEventListener("click", closeCalibration);
+document.getElementById("calScoreGrid").addEventListener("click", function(e) {
+  var btn = e.target.closest ? e.target.closest('.cal-score-btn') : null;
+  if (!btn) return;
+  var parent = btn.parentElement;
+  if (!parent) return;
+  var siblings = parent.querySelectorAll('.cal-score-btn');
+  for (var i = 0; i < siblings.length; i++) siblings[i].classList.remove('cal-score-selected');
+  btn.classList.add('cal-score-selected');
 });
 </script>
 </body>
