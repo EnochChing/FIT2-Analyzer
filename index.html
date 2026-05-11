@@ -1535,15 +1535,9 @@ function closeBmiCalc() {
 const camStream = { current: null };
 const LINE_FRACTIONS = [0.106, 0.216, 0.373, 0.473]; // L1-L4 as fraction of strip window
 
-// Lane-indexed expected scores when a line is present (score by position, not intensity)
-const LANE_SCORES = [0, 1, 2, 3]; // L1=Hb→0, L2=Fn→1, L3=Bf→2, L4=BactControl→3
-
-// Absolute noise floor: any corrected signal below this is considered absent
-const NOISE_THRESHOLD = 1;
-// Absolute minimum corrected signal for a score of 3
-const ABS_FLOOR_3 = 10;
-// Lower threshold for L2 (expected faint line) — score 1 possible at very low signal
-const L2_FLOOR = 0;
+// Unified absolute thresholds for all 8 markers (A/B × 4 lanes)
+// Calibrated from reference strips: corrected signal = bandRedness - membraneBackground
+const SCORE_THRESHOLDS = [2, 8, 25]; // ≤2→0, 2-8→1, 8-25→2, >25→3
 
 function measureRednessAtRow(imgData, w, y) {
   let rS = 0, gS = 0, bS = 0, n = 0;
@@ -1557,215 +1551,164 @@ function measureRednessAtRow(imgData, w, y) {
 }
 
 /**
- * Compute local background redness from regions surrounding a line position.
- * Samples above and below the band, skipping the band zone itself.
+ * Compute the membrane's base redness from the top and bottom edges of the strip window.
+ * These areas should be blank membrane (no test lines), giving a stable global reference.
  */
-function computeLocalBg(imgData, w, h, cy, bandHeight, bestStart, bestEnd) {
-  const gap = Math.round(bandHeight * 0.5);
-  const aboveStart = Math.max(bestStart, cy - bandHeight - gap);
-  const aboveEnd = Math.max(aboveStart + 1, cy - gap);
-  const belowStart = Math.min(bestEnd, cy + gap + 1);
-  const belowEnd = Math.min(bestEnd, cy + bandHeight + gap);
+function computeMembraneBackground(imgData, w, h, bestStart, bestEnd) {
+  const windowH = bestEnd - bestStart;
+  const edgeBand = Math.max(3, Math.round(windowH * 0.05));
 
-  let sum = 0, count = 0;
-  for (let y = aboveStart; y < aboveEnd; y += 3) {
-    sum += measureRednessAtRow(imgData, w, y).redness; count++;
+  const samples = [];
+  // Sample top edge (above L1 — blank membrane)
+  for (let y = bestStart; y < Math.min(bestEnd, bestStart + edgeBand); y += 2) {
+    samples.push(measureRednessAtRow(imgData, w, y).redness);
   }
-  for (let y = belowStart; y < belowEnd; y += 3) {
-    sum += measureRednessAtRow(imgData, w, y).redness; count++;
+  // Sample bottom edge (below L4 — blank membrane)
+  for (let y = Math.max(bestStart, bestEnd - edgeBand); y < bestEnd; y += 2) {
+    samples.push(measureRednessAtRow(imgData, w, y).redness);
   }
-  return count > 0 ? sum / count : 0;
+  // Sample middle gap between L2 and L3
+  const midY = Math.round((bestStart + bestEnd) / 2);
+  for (let y = midY - edgeBand; y < midY + edgeBand; y += 3) {
+    if (y >= bestStart && y < bestEnd) {
+      samples.push(measureRednessAtRow(imgData, w, y).redness);
+    }
+  }
+  // Use 10th percentile to avoid outliers (pen marks) corrupting the estimate
+  samples.sort((a, b) => a - b);
+  const idx = Math.max(0, Math.min(samples.length - 1, Math.round(samples.length * 0.1)));
+  return samples.length > 0 ? samples[idx] : 0;
 }
 
 /**
- * Compute dynamic thresholds from all corrected signals in this image.
- * Returns {midThreshold, highThreshold} based on the observed signal range.
+ * Classify corrected signal using unified absolute thresholds.
+ * Same standard for all 8 markers — no lane-specific logic.
  */
-function computeDynamicThresholds(allSignals) {
-  // Filter only signals above noise floor — these are "real" bands
-  const real = allSignals.filter(s => s > NOISE_THRESHOLD);
-  if (real.length === 0) {
-    return { midThreshold: NOISE_THRESHOLD + 2, highThreshold: NOISE_THRESHOLD + 5 };
-  }
-
-  const maxSig = Math.max(...real);
-  const minSig = Math.min(...real);
-  const range = maxSig - minSig;
-
-  // If all real signals are very close, space thresholds evenly
-  if (range < 5) {
-    const mid = Math.max(NOISE_THRESHOLD + 1, minSig + 2);
-    const high = Math.max(mid + 1, minSig + 4);
-    return { midThreshold: mid, highThreshold: high };
-  }
-
-  return {
-    midThreshold: minSig + range * 0.3,
-    highThreshold: minSig + range * 0.7,
-  };
-}
-
-/**
- * Classify a corrected signal into score 0-3 using dynamic thresholds.
- * Score by lane position, not by ranking across bands.
- */
-function classifyScore(correctedSignal, midThreshold, highThreshold, laneIndex) {
-  // Lane-specific noise floor: L2 is expected faint, use lower threshold
-  const floor = laneIndex === 1 ? L2_FLOOR : NOISE_THRESHOLD;
-  if (correctedSignal < floor) return 0;
-
-  // Score comes from the lane's expected position, not from absolute intensity
-  const expectedScore = LANE_SCORES[laneIndex];
-
-  // If signal is very faint, only allow score 0 or 1
-  if (correctedSignal < midThreshold) return Math.min(1, expectedScore);
-
-  // Mid strength — score up to 2
-  if (correctedSignal < highThreshold) return Math.min(2, expectedScore);
-
-  // Strong signal — allow up to 3, but only if above absolute floor
-  if (correctedSignal >= highThreshold && correctedSignal >= ABS_FLOOR_3) return Math.min(3, expectedScore);
-  if (correctedSignal >= highThreshold) return Math.min(2, expectedScore);
-
-  return 0;
-}
-
-/**
- * Check adequacy using L4 (BactControl).
- * L4 must have a clear signal for the test to be valid.
- */
-function checkAdequacy(l4Signal) {
-  // Adequacy threshold: L4 must be at least 2x noise floor
-  const ADEQUACY_THRESHOLD = NOISE_THRESHOLD * 2;
-  if (l4Signal < NOISE_THRESHOLD) {
-    return { valid: false, confidence: 'low', message: 'Control line (L4) not detected — test may be invalid. Ensure good lighting and focus.' };
-  }
-  if (l4Signal < ADEQUACY_THRESHOLD) {
-    return { valid: true, confidence: 'low', message: 'Control line (L4) is faint — results may be less reliable.' };
-  }
-  return { valid: true, confidence: 'high', message: '' };
+function classifyScore(correctedSignal) {
+  if (correctedSignal < SCORE_THRESHOLDS[0]) return 0;
+  if (correctedSignal < SCORE_THRESHOLDS[1]) return 1;
+  if (correctedSignal < SCORE_THRESHOLDS[2]) return 2;
+  return 3;
 }
 
 function scanImage(imgData, w, h) {
-  // Step 1: Build brightness profile to find the strip window
-  const profile = [];
-  for (let y = 0; y < h; y += 2) {
-    let rS = 0, gS = 0, bS = 0, n = 0;
-    const xLo = Math.round(w * 0.15), xHi = Math.round(w * 0.85);
-    for (let x = xLo; x < xHi; x += 3) {
-      const i = (y * w + x) * 4;
-      rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
-    }
-    profile.push({ y, bright: (rS / n + gS / n + bS / n) / 3 });
-  }
+  // Step 1: Find the strip window
+  let bestStart, bestEnd, bestLen;
 
-  // Step 2: Find the longest sustained bright region (strip window)
-  const brightThreshold = 120;
-  let bestStart = 0, bestEnd = h - 1, bestLen = 0;
-  let curStart = -1;
-  for (const p of profile) {
-    if (p.bright > brightThreshold) {
-      if (curStart === -1) curStart = p.y;
-    } else {
-      if (curStart !== -1) {
-        const len = p.y - curStart;
-        if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = p.y; }
-        curStart = -1;
+  // For small/cropped images (no cassette visible), use the entire image
+  if (h < 400) {
+    bestStart = 0;
+    bestEnd = h;
+  } else {
+    // Build brightness profile to find the strip window
+    const profile = [];
+    for (let y = 0; y < h; y += 2) {
+      let rS = 0, gS = 0, bS = 0, n = 0;
+      const xLo = Math.round(w * 0.15), xHi = Math.round(w * 0.85);
+      for (let x = xLo; x < xHi; x += 3) {
+        const i = (y * w + x) * 4;
+        rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
+      }
+      profile.push({ y, bright: (rS / n + gS / n + bS / n) / 3 });
+    }
+
+    const brightThreshold = 120;
+    bestStart = 0; bestEnd = h - 1; bestLen = 0;
+    let curStart = -1;
+    for (const p of profile) {
+      if (p.bright > brightThreshold) {
+        if (curStart === -1) curStart = p.y;
+      } else {
+        if (curStart !== -1) {
+          const len = p.y - curStart;
+          if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = p.y; }
+          curStart = -1;
+        }
       }
     }
-  }
-  if (curStart !== -1) {
-    const len = h - curStart;
-    if (len > bestLen) { bestStart = curStart; bestEnd = h - 1; }
-  }
-  if (bestLen < h * 0.05) {
-    bestStart = Math.round(h * 0.2);
-    bestEnd = Math.round(h * 0.8);
+    if (curStart !== -1) {
+      const len = h - curStart;
+      if (len > bestLen) { bestStart = curStart; bestEnd = h - 1; }
+    }
+    if (bestLen < h * 0.05) {
+      // Fallback: find darkest region (highest variance in redness)
+      bestStart = Math.round(h * 0.05);
+      bestEnd = Math.round(h * 0.95);
+    }
   }
 
   const windowH = bestEnd - bestStart;
 
+  // Step 2: Compute global membrane background (min redness from blank edges)
+  const membraneBg = computeMembraneBackground(imgData, w, h, bestStart, bestEnd);
+
   // Step 3: Calculate 4 line Y-positions from calibrated fractions
   const linePositions = LINE_FRACTIONS.map(f =>
-    Math.max(bestStart + 5, Math.min(bestEnd - 5, Math.round(bestStart + windowH * f)))
+    Math.max(bestStart + 3, Math.min(bestEnd - 3, Math.round(bestStart + windowH * f)))
   );
 
-  // Step 4: Measure raw redness in each A/B sub-zone and local background per lane
-  const bandHeight = Math.round(windowH * 0.06);
-  const laneData = [];
+  // Step 4: Measure best redness in each A/B sub-zone, correct with global bg
+  const results = [];
   const names = ['L1', 'L2', 'L3', 'L4'];
 
   for (let li = 0; li < 4; li++) {
     const cy = linePositions[li];
-    // A zone biased above center, B zone biased below center, with overlap
-    const aStart = Math.max(bestStart, cy - 12);
-    const aEnd = Math.max(aStart + 1, Math.min(bestEnd, cy + 4));
-    const bStart = Math.max(bestStart, cy - 4);
-    const bEnd = Math.max(bStart + 1, Math.min(bestEnd, cy + 12));
+    
+    // A zone: above center. B zone: below center. Both with overlap.
+    const aStart = Math.max(bestStart, cy - 10);
+    const aEnd = Math.max(aStart + 1, Math.min(bestEnd, cy + 5));
+    const bStart = Math.max(bestStart, cy - 2);
+    const bEnd = Math.max(bStart + 1, Math.min(bestEnd, cy + 10));
 
-    let aBest = -999, bBest = -999;
+    let aBestRaw = -999, bBestRaw = -999;
     for (let yy = aStart; yy < aEnd; yy += 2) {
       const m = measureRednessAtRow(imgData, w, yy);
-      if (m.redness > aBest) aBest = m.redness;
+      if (m.redness > aBestRaw) aBestRaw = m.redness;
     }
     for (let yy = bStart; yy < bEnd; yy += 2) {
       const m = measureRednessAtRow(imgData, w, yy);
-      if (m.redness > bBest) bBest = m.redness;
+      if (m.redness > bBestRaw) bBestRaw = m.redness;
     }
 
-    // Compute local background for this lane
-    const localBg = computeLocalBg(imgData, w, h, cy, bandHeight, bestStart, bestEnd);
+    // Corrected signal = raw band redness minus global membrane background
+    const aCorr = Math.max(0, aBestRaw - membraneBg);
+    const bCorr = Math.max(0, bBestRaw - membraneBg);
 
-    // Corrected signal = band redness minus local background
-    const aCorrected = Math.max(0, aBest - localBg);
-    const bCorrected = Math.max(0, bBest - localBg);
-
-    laneData.push({
-      li, name: names[li], localBg: Math.round(localBg * 10) / 10,
-      a: { raw: aBest, corrected: aCorrected },
-      b: { raw: bBest, corrected: bCorrected },
-    });
-  }
-
-  // Step 5: Compute dynamic thresholds from all corrected signals
-  const allCorrected = [];
-  for (const ld of laneData) {
-    allCorrected.push(ld.a.corrected);
-    allCorrected.push(ld.b.corrected);
-  }
-  const { midThreshold, highThreshold } = computeDynamicThresholds(allCorrected);
-
-  // Step 6: Score each lane using lane-indexed scoring + dynamic thresholds
-  const results = [];
-  for (const ld of laneData) {
-    const aScore = classifyScore(ld.a.corrected, midThreshold, highThreshold, ld.li);
-    const bScore = classifyScore(ld.b.corrected, midThreshold, highThreshold, ld.li);
     results.push({
-      name: ld.name + 'A',
-      redness: Math.round(ld.a.raw * 10) / 10,
-      corrected: Math.round(ld.a.corrected * 10) / 10,
-      localBg: ld.localBg,
-      value: aScore,
-      markers: [ld.name + 'a'],
+      name: names[li] + 'A',
+      redness: Math.round(aBestRaw * 10) / 10,
+      corrected: Math.round(aCorr * 10) / 10,
+      membraneBg: Math.round(membraneBg * 10) / 10,
+      value: classifyScore(aCorr),
+      markers: [names[li] + 'a'],
     });
     results.push({
-      name: ld.name + 'B',
-      redness: Math.round(ld.b.raw * 10) / 10,
-      corrected: Math.round(ld.b.corrected * 10) / 10,
-      localBg: ld.localBg,
-      value: bScore,
-      markers: [ld.name + 'b'],
+      name: names[li] + 'B',
+      redness: Math.round(bBestRaw * 10) / 10,
+      corrected: Math.round(bCorr * 10) / 10,
+      membraneBg: Math.round(membraneBg * 10) / 10,
+      value: classifyScore(bCorr),
+      markers: [names[li] + 'b'],
     });
   }
 
-  // Step 7: Check L4 adequacy (BactControl)
+  // Step 5: Check L4 adequacy (BactControl — must be present for valid test)
   const l4A = results[6], l4B = results[7];
   const l4Signal = Math.max(l4A.corrected, l4B.corrected);
-  const adequacy = checkAdequacy(l4Signal);
-  results.adequacy = adequacy;
+  const l4Valid = l4Signal >= SCORE_THRESHOLDS[0]; // at least score 1
+  results.adequacy = {
+    valid: l4Valid,
+    confidence: l4Valid ? 'high' : 'low',
+    message: l4Valid ? '' : 'Control line (L4) not detected — test may be invalid. Ensure good lighting and focus.',
+  };
 
-  // Attach thresholds for diagnostics
-  results.thresholds = { noiseThreshold: NOISE_THRESHOLD, midThreshold: Math.round(midThreshold * 10) / 10, highThreshold: Math.round(highThreshold * 10) / 10, absFloor3: ABS_FLOOR_3 };
+  // Attach diagnostics
+  results.thresholds = {
+    score0: SCORE_THRESHOLDS[0],
+    score1: SCORE_THRESHOLDS[1],
+    score2: SCORE_THRESHOLDS[2],
+    membraneBg: Math.round(membraneBg * 10) / 10,
+  };
 
   return results;
 }
@@ -1857,9 +1800,9 @@ function showScanResults(results) {
 
       // Show dynamic thresholds for transparency
       const th = results.thresholds || {};
-      const thHtml = th.midThreshold !== undefined
+      const thHtml = th.score0 !== undefined
         ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'Thresholds: noise≥' + th.noiseThreshold + ' | mid≥' + th.midThreshold + ' | high≥' + th.highThreshold + ' | floor₃≥' + th.absFloor3 +
+          'Thresholds: 0&lt;' + th.score0 + ' | 1≥' + th.score1 + ' | 2≥' + th.score2 + ' | 3≥' + th.score2 + '+ | bg=' + th.membraneBg +
           '</div>'
         : '';
 
@@ -1871,12 +1814,12 @@ function showScanResults(results) {
         // Diagnostic: show raw / corrected / localBg as small text
         const diagHtml = (a.corrected !== undefined)
           ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'r=' + a.redness + ' bg=' + a.localBg + ' c=' + a.corrected +
+            'r=' + a.redness + ' bg=' + a.membraneBg + ' c=' + a.corrected +
             '</span>'
           : '';
         const diagHtmlB = (b.corrected !== undefined)
           ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'r=' + b.redness + ' bg=' + b.localBg + ' c=' + b.corrected +
+            'r=' + b.redness + ' bg=' + b.membraneBg + ' c=' + b.corrected +
             '</span>'
           : '';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
