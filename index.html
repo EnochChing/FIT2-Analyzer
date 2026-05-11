@@ -471,25 +471,6 @@
   .bmi-result .bmi-number { font-size: 28px; font-weight: 700; color: var(--accent-dim); }
   .bmi-modal .btn-row { gap: 8px; }
 
-/* Calibration score buttons */
-.cal-score-btn {
-  width:28px;height:28px;border-radius:6px;
-  border:0.5px solid rgba(0,0,0,0.1);
-  background:#fff;
-  font-size:12px;font-weight:600;
-  color:var(--text-secondary);
-  cursor:pointer;
-  transition:all 0.12s;
-  -webkit-tap-highlight-color:transparent;
-  padding:0;font-family:inherit;line-height:1;
-}
-.cal-score-btn:active { transform:scale(0.88); }
-.cal-score-btn.cal-score-selected {
-  background:linear-gradient(135deg,var(--accent),var(--accent-light));
-  color:#fff;
-  border-color:var(--accent);
-  box-shadow:0 1px 4px rgba(59,130,196,0.25);
-}
 </style>
 </head>
 <body>
@@ -662,31 +643,11 @@
         <button class="btn btn-secondary" id="camUploadBtn">Upload Photo</button>
         <button class="btn btn-secondary" id="camCloseBtn">Close Camera</button>
       </div>
-      <div style="text-align:center;display:flex;" id="camCalibrateRow">
-        <button id="camCalibrateBtn" style="flex:1;background:none;border:none;font-size:12px;color:var(--accent);cursor:pointer;padding:6px 8px;text-decoration:underline;font-family:inherit;">Calibrate Scanner</button>
-      </div>
       <div class="btn-row" id="camAcceptRow" style="display:none;">
         <button class="btn btn-primary" id="camAcceptBtn" style="flex:1;">Use Detected Values</button>
         <button class="btn btn-secondary" id="camRetakeBtn">Retake</button>
       </div>
       <input type="file" accept="image/*" id="camFileInput" style="display:none;">
-      <!-- Calibration Panel -->
-      <div id="camCalibration" style="display:none;">
-        <div style="background:rgba(59,130,196,0.06);border-radius:10px;padding:12px;margin-bottom:12px;">
-          <p style="font-size:13px;font-weight:600;margin-bottom:6px;">Calibration</p>
-          <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;" id="calStatus">Upload a calibration card image to set reference values.</p>
-          <div id="calScoreGrid" style="display:grid;gap:4px;margin-bottom:8px;font-size:13px;"></div>
-          <div class="btn-row" style="gap:6px;margin-top:4px;">
-            <button class="btn btn-secondary" id="calUploadBtn" style="flex:1;font-size:12px;padding:6px;">Upload Cal Image</button>
-            <button class="btn btn-primary" id="calSaveBtn" style="flex:1;font-size:12px;padding:6px;display:none;">Save Calibration</button>
-          </div>
-          <div class="btn-row" style="gap:6px;margin-top:4px;">
-            <button class="btn btn-secondary" id="calBackBtn" style="flex:1;font-size:12px;padding:6px;">Back to Camera</button>
-            <button class="btn btn-secondary" id="calClearBtn" style="font-size:12px;padding:6px;">Clear</button>
-          </div>
-        </div>
-      </div>
-      <input type="file" accept="image/*" id="calFileInput" style="display:none;">
     </div>
   </div>
 
@@ -1573,157 +1534,74 @@ function closeBmiCalc() {
 
 // ===== CAMERA SCANNER =====
 const camStream = { current: null };
-const LINE_FRACTIONS = [0.106, 0.216, 0.373, 0.473]; // L1-L4 as fraction of strip window
 
-// Unified thresholds for all 8 markers — same standard for every lane.
-// Applied directly to raw redness (R - max(G,B)). No per-lane factors, no background subtraction.
-const SCORE_THRESHOLDS = [2, 7, 20]; // <2→0, 2-7→1, 7-20→2, >20→3
-
-function classifyScore(corrected) {
-  if (corrected < SCORE_THRESHOLDS[0]) return 0;
-  if (corrected < SCORE_THRESHOLDS[1]) return 1;
-  if (corrected < SCORE_THRESHOLDS[2]) return 2;
+// ===== RELATIVE SCORING =====
+// Score each marker relative to the darkest line in the current scan.
+// 0 = no visible red line (< 1% of max)
+// 1 = faint pink/red line (1-35% of max)
+// 2 = moderate red line (36-70% of max)
+// 3 = darkest strong red line (71-100% of max)
+function classifyRelative(redness, refMax) {
+  if (refMax < 2 || redness < 1) return 0;
+  const pct = redness / refMax;
+  if (pct < 0.01) return 0;
+  if (pct < 0.36) return 1;
+  if (pct < 0.71) return 2;
   return 3;
 }
 
-// ===== CALIBRATION =====
-const CAL_KEY = 'fit2_calibration_v3';
-const DEFAULT_CAL_SCORES = { L1A:0, L1B:0, L2A:1, L2B:1, L3A:2, L3B:2, L4A:3, L4B:3 };
 
-function getCalibration() {
-  try { return JSON.parse(localStorage.getItem(CAL_KEY)); }
-  catch { return null; }
-}
-function saveCalibrationData(data) {
-  localStorage.setItem(CAL_KEY, JSON.stringify(data));
-}
-function clearCalibrationData() {
-  localStorage.removeItem(CAL_KEY);
-}
+// ── Profile helpers ──────────────────────────────────────────────────────────
 
-function classifyWithCalibration(redness, markerName) {
-  if (redness < SCORE_THRESHOLDS[0]) return 0;
-  if (window._calibrationMode) return classifyScore(redness);
-  const cal = getCalibration();
-  if (!cal || !cal[markerName]) return classifyScore(redness);
-  const d = cal[markerName];
-  if (!d || d.expectedScore === 0 || !d.redness || d.redness <= 0) return classifyScore(redness);
-  return Math.min(3, Math.round(redness / d.redness * d.expectedScore));
-}
-
-function getDefaultCalScores() {
-  return Object.assign({}, DEFAULT_CAL_SCORES);
-}
-
-function openCalibration() {
-  document.getElementById('camTitle').textContent = 'Calibrate Scanner';
-  document.getElementById('camSub').textContent = 'Upload a calibration card image and assign expected scores.';
-  document.getElementById('camVideo').style.display = 'none';
-  document.getElementById('camPlaceholder').style.display = 'none';
-  document.getElementById('camGuide').style.display = 'none';
-  document.getElementById('camCaptureBtn').style.display = 'none';
-  document.getElementById('camBtnRow').style.display = 'none';
-  document.getElementById('camCalibrateRow').style.display = 'none';
-  document.getElementById('camAcceptRow').style.display = 'none';
-  document.getElementById('camResult').style.display = 'none';
-  if (camStream.current) {
-    camStream.current.getTracks().forEach(t => t.stop());
-    camStream.current = null;
+function extractProfile(imgData, w, h, y1, y2) {
+  // Extract 1D redness profile (R - max(G,B)) averaged across central 60% width
+  const xLo = Math.round(w * 0.20), xHi = Math.round(w * 0.80);
+  const profile = [];
+  for (let y = y1; y < y2; y += 2) {
+    let rS = 0, gS = 0, bS = 0, n = 0;
+    for (let x = xLo; x < xHi; x += 2) {
+      const i = (y * w + x) * 4;
+      rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
+    }
+    if (n === 0) continue;
+    const redness = (rS / n) - Math.max(gS / n, bS / n);
+    profile.push({ y, redness });
   }
-  document.getElementById('camCalibration').style.display = 'block';
-  const cal = getCalibration();
-  document.getElementById('calStatus').textContent = cal
-    ? 'Calibration active (' + Object.keys(cal).length + ' markers). Upload new image to update.'
-    : 'Upload a calibration card image to set reference values.';
+  return profile;
 }
 
-function closeCalibration() {
-  document.getElementById('camCalibration').style.display = 'none';
-  document.getElementById('camTitle').textContent = 'Scan Test Strip';
-  document.getElementById('camSub').textContent = 'Position the test strip window within the guide and tap Capture.';
-  document.getElementById('camBtnRow').style.display = 'flex';
-  document.getElementById('camCalibrateRow').style.display = 'flex';
-  document.getElementById('camPlaceholder').style.display = 'flex';
-  document.getElementById('camFileInput').value = '';
-  document.getElementById('calFileInput').value = '';
-  window._calibrationMode = false;
+function smoothProfile(profile, window) {
+  // Centered moving average
+  const half = Math.floor(window / 2);
+  const result = new Array(profile.length);
+  for (let i = 0; i < profile.length; i++) {
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - half); j < Math.min(profile.length, i + half + 1); j++) {
+      sum += profile[j].redness; count++;
+    }
+    result[i] = { y: profile[i].y, redness: count > 0 ? sum / count : 0 };
+  }
+  return result;
 }
 
-function handleCalibrationUpload(file) {
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const img = new Image();
-    img.onload = function() {
-      const canvas = document.createElement('canvas');
-      const maxDim = 800;
-      const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
-      canvas.width = Math.round(img.width * scale);
-      canvas.height = Math.round(img.height * scale);
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      window._calibrationMode = true;
-      const results = scanImage(imgData, canvas.width, canvas.height);
-      window._calibrationMode = false;
-      window._calResultsMap = {};
-      for (const r of results) {
-        window._calResultsMap[r.name] = r.corrected !== undefined ? r.corrected : Math.max(0, r.redness || 0);
+function findProfilePeaks(profile, minHeight, minDistance) {
+  // Find local maxima in the profile above minHeight, separated by minDistance
+  const peaks = [];
+  for (let i = 1; i < profile.length - 1; i++) {
+    const prev = profile[i - 1].redness;
+    const curr = profile[i].redness;
+    const next = profile[i + 1].redness;
+    if (curr > prev && curr >= next && curr >= minHeight) {
+      // Check distance from last accepted peak
+      if (peaks.length === 0 || (profile[i].y - peaks[peaks.length - 1].y) >= minDistance) {
+        peaks.push({ y: profile[i].y, redness: curr, idx: i });
+      } else if (curr > peaks[peaks.length - 1].redness) {
+        // Replace last peak if this one is taller
+        peaks[peaks.length - 1] = { y: profile[i].y, redness: curr, idx: i };
       }
-      document.getElementById('calStatus').textContent = 'Calibration image scanned. Verify redness values and adjust scores below, then tap Save.';
-      renderCalibrationGrid(results);
-      document.getElementById('calSaveBtn').style.display = '';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-
-function renderCalibrationGrid(results) {
-  const grid = document.getElementById('calScoreGrid');
-  const defScores = getDefaultCalScores();
-  let html = '<div style="display:flex;align-items:center;gap:4px;padding:2px 0;font-size:11px;color:var(--text-tertiary);border-bottom:1px solid rgba(0,0,0,0.06);">' +
-    '<span style="min-width:30px;">Marker</span>' +
-    '<span style="min-width:38px;">Value</span>' +
-    '<span style="margin-left:auto;">Score</span></div>';
-  for (const r of results) {
-    const def = defScores[r.name] !== undefined ? defScores[r.name] : 0;
-    const val = r.corrected !== undefined ? r.corrected : Math.max(0, r.redness || 0);
-    html += '<div style="display:flex;align-items:center;gap:4px;padding:3px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-      '<span style="font-size:12px;font-weight:600;min-width:30px;">' + r.name + '</span>' +
-      '<span style="font-size:11px;color:var(--text-tertiary);min-width:38px;">' + val.toFixed(1) + '</span>' +
-      '<div style="display:flex;gap:2px;margin-left:auto;">' +
-      [0,1,2,3].map(function(s) {
-        return '<button class="cal-score-btn' + (s === def ? ' cal-score-selected' : '') + '" data-marker="' + r.name + '" data-score="' + s + '">' + s + '</button>';
-      }).join('') +
-      '</div></div>';
+    }
   }
-  grid.innerHTML = html;
-}
-
-function saveCalibration() {
-  const btns = document.querySelectorAll('#calScoreGrid .cal-score-btn.cal-score-selected');
-  if (!btns.length) {
-    document.getElementById('calStatus').textContent = 'No scores selected. Upload a calibration image first.';
-    return;
-  }
-  const cal = {};
-  for (let i = 0; i < btns.length; i++) {
-    const marker = btns[i].dataset.marker;
-    const score = parseInt(btns[i].dataset.score);
-    const redness = window._calResultsMap && window._calResultsMap[marker] !== undefined
-      ? window._calResultsMap[marker] : 0;
-    cal[marker] = { redness: Math.round(redness * 10) / 10, expectedScore: score };
-  }
-  saveCalibrationData(cal);
-  document.getElementById('calStatus').textContent = 'Calibration saved! (' + Object.keys(cal).length + ' markers).';
-}
-
-function clearCalibration() {
-  clearCalibrationData();
-  document.getElementById('calStatus').textContent = 'Calibration cleared. Upload a new calibration image.';
-  document.getElementById('calScoreGrid').innerHTML = '';
-  document.getElementById('calSaveBtn').style.display = 'none';
-  window._calResultsMap = null;
+  return peaks;
 }
 
 function measureRednessAtRow(imgData, w, y) {
@@ -1737,16 +1615,67 @@ function measureRednessAtRow(imgData, w, y) {
   return { redness: rA - Math.max(gA, bA), brightness: (rA + gA + bA) / 3 };
 }
 
+function measureLocalBg(imgData, w, y1, y2) {
+  // Average redness in a background region
+  if (y2 <= y1) return 0;
+  let sum = 0, n = 0;
+  for (let y = y1; y < y2; y += 2) {
+    const m = measureRednessAtRow(imgData, w, y);
+    sum += m.redness; n++;
+  }
+  return n > 0 ? sum / n : 0;
+}
+
+function measurePeakSignal(imgData, w, profile, peakIdx, yMin, yMax, halfHeight, bgGap) {
+  // Measure peak redness above local background
+  const peakY = profile[peakIdx].y;
+  const searchY1 = Math.max(yMin, peakY - halfHeight);
+  const searchY2 = Math.min(yMax, peakY + halfHeight);
+
+  // Background: regions above and below search zone, with a gap
+  const bgY1 = Math.max(yMin, searchY1 - bgGap - halfHeight);
+  const bgY2 = Math.max(yMin, searchY1 - bgGap);
+  const bgY3 = Math.min(yMax, searchY2 + bgGap);
+  const bgY4 = Math.min(yMax, searchY2 + bgGap + halfHeight);
+
+  let bgSum = 0, bgN = 0;
+  for (const [by1, by2] of [[bgY1, bgY2], [bgY3, bgY4]]) {
+    if (by2 > by1 + 2) {
+      for (let y = by1; y < by2; y += 2) {
+        const m = measureRednessAtRow(imgData, w, y);
+        bgSum += m.redness; bgN++;
+      }
+    }
+  }
+  const bgLevel = bgN > 0 ? bgSum / bgN : 0;
+
+  // Find max redness above background in search zone
+  let bestRaw = -999, bestAboveBg = -999;
+  for (let y = searchY1; y < searchY2; y += 2) {
+    const m = measureRednessAtRow(imgData, w, y);
+    if (m.redness > bestRaw) {
+      bestRaw = m.redness;
+      bestAboveBg = m.redness - bgLevel;
+    }
+  }
+
+  return {
+    raw: bestRaw > -999 ? bestRaw : 0,
+    corrected: Math.max(0, bestAboveBg),
+    bg: Math.round(bgLevel * 10) / 10,
+  };
+}
+
+// ── Main Scanner ─────────────────────────────────────────────────────────────
+
 function scanImage(imgData, w, h) {
   // Step 1: Find the strip window
-  let bestStart, bestEnd, bestLen;
+  let bestStart, bestEnd;
 
-  // For small/cropped images (no cassette visible), use the entire image
   if (h < 400) {
     bestStart = 0;
     bestEnd = h;
   } else {
-    // Build brightness profile to find the strip window
     const profile = [];
     for (let y = 0; y < h; y += 2) {
       let rS = 0, gS = 0, bS = 0, n = 0;
@@ -1759,8 +1688,8 @@ function scanImage(imgData, w, h) {
     }
 
     const brightThreshold = 120;
-    bestStart = 0; bestEnd = h - 1; bestLen = 0;
-    let curStart = -1;
+    bestStart = 0; bestEnd = h - 1;
+    let bestLen = 0, curStart = -1;
     for (const p of profile) {
       if (p.bright > brightThreshold) {
         if (curStart === -1) curStart = p.y;
@@ -1772,84 +1701,121 @@ function scanImage(imgData, w, h) {
         }
       }
     }
-    if (curStart !== -1) {
-      const len = h - curStart;
-      if (len > bestLen) { bestStart = curStart; bestEnd = h - 1; }
-    }
-    if (bestLen < h * 0.05) {
-      // Fallback: find darkest region (highest variance in redness)
-      bestStart = Math.round(h * 0.05);
-      bestEnd = Math.round(h * 0.95);
-    }
+    if (curStart !== -1 && (h - curStart) > bestLen) { bestStart = curStart; bestEnd = h - 1; }
+    if (bestLen < h * 0.05) { bestStart = Math.round(h * 0.05); bestEnd = Math.round(h * 0.95); }
   }
 
   const windowH = bestEnd - bestStart;
 
-  // Step 2: Calculate 4 line Y-positions from calibrated fractions
-  const linePositions = LINE_FRACTIONS.map(f =>
-    Math.max(bestStart + 3, Math.min(bestEnd - 3, Math.round(bestStart + windowH * f)))
-  );
+  // Step 2: Extract and smooth the redness profile
+  const rawProfile = extractProfile(imgData, w, h, bestStart, bestEnd);
+  const smooth = smoothProfile(rawProfile, 11);
 
-  // Step 3: Measure best redness in each A/B sub-zone.
-  // Uses raw redness (R - max(G,B)) directly --- no background subtraction.
-  // Same thresholds for all 8 markers.
-  const results = [];
+  // Step 3: Find peaks in the smoothed profile
+  const stdRedness = smooth.reduce((s, p) => s + p.redness * p.redness, 0) / smooth.length;
+  const noiseFloor = Math.max(1.0, Math.sqrt(stdRedness) * 1.5);
+  const allPeaks = findProfilePeaks(smooth, noiseFloor, Math.max(8, Math.round(windowH * 0.03)));
+
+  // Sort by redness descending, take top 4
+  allPeaks.sort((a, b) => b.redness - a.redness);
+  const topPeaks = allPeaks.slice(0, 4);
+  // Sort top 4 by Y position (top to bottom)
+  topPeaks.sort((a, b) => a.y - b.y);
+
   const names = ['L1', 'L2', 'L3', 'L4'];
+  const results = [];
+  const halfH = Math.max(6, Math.round(windowH * 0.018));
+  const bgGap = Math.max(4, Math.round(windowH * 0.02));
 
+  // Step 4: Measure signal at each detected peak
   for (let li = 0; li < 4; li++) {
-    const cy = linePositions[li];
+    let sigA, sigB;
 
-    // A zone: above center. B zone: below center. Both with overlap.
-    const aStart = Math.max(bestStart, cy - 10);
-    const aEnd = Math.max(aStart + 1, Math.min(bestEnd, cy + 5));
-    const bStart = Math.max(bestStart, cy - 2);
-    const bEnd = Math.max(bStart + 1, Math.min(bestEnd, cy + 10));
+    if (li < topPeaks.length) {
+      const pk = topPeaks[li];
 
-    let aBestRaw = -999, bBestRaw = -999;
-    for (let yy = aStart; yy < aEnd; yy += 2) {
-      const m = measureRednessAtRow(imgData, w, yy);
-      if (m.redness > aBestRaw) aBestRaw = m.redness;
+      // B band: main peak signal
+      sigB = measurePeakSignal(imgData, w, rawProfile, pk.idx, bestStart, bestEnd, halfH, bgGap);
+
+      // A band: look for a secondary peak above the main one, or measure at offset
+      const offsetY = pk.y - Math.max(8, Math.round(windowH * 0.025));
+      let foundSecondary = false;
+      for (const sp of allPeaks) {
+        if (sp.y < pk.y && (pk.y - sp.y) < halfH * 3 && sp.y !== pk.y) {
+          sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap);
+          foundSecondary = true;
+          break;
+        }
+      }
+      if (!foundSecondary) {
+        // Measure at offset position
+        let bestRaw = -999, bestAboveBg = -999;
+        const bgLevel = sigB.bg;
+        const aY1 = Math.max(bestStart, offsetY - halfH);
+        const aY2 = Math.min(bestEnd, offsetY + halfH);
+        for (let y = aY1; y < aY2; y += 2) {
+          const m = measureRednessAtRow(imgData, w, y);
+          if (m.redness > bestRaw) {
+            bestRaw = m.redness;
+            bestAboveBg = m.redness - bgLevel;
+          }
+        }
+        sigA = {
+          raw: bestRaw > -999 ? bestRaw : 0,
+          corrected: Math.max(0, bestAboveBg),
+          bg: bgLevel,
+        };
+      }
+    } else {
+      // Fewer than 4 peaks detected — use fallback fractions for missing ones
+      const fallbackY = Math.round(bestStart + windowH * [0.106, 0.216, 0.373, 0.473][li]);
+      sigB = measurePeakSignal(imgData, w, rawProfile,
+        rawProfile.findIndex(p => p.y >= fallbackY), bestStart, bestEnd, halfH, bgGap);
+      if (sigB.raw <= 0) sigB = { raw: 0, corrected: 0, bg: 0 };
+      sigA = { raw: 0, corrected: 0, bg: sigB.bg };
     }
-    for (let yy = bStart; yy < bEnd; yy += 2) {
-      const m = measureRednessAtRow(imgData, w, yy);
-      if (m.redness > bBestRaw) bBestRaw = m.redness;
-    }
-
-    // Clamp negative redness to 0 (blue-ish background = no signal)
-    const aVal = Math.max(0, aBestRaw);
-    const bVal = Math.max(0, bBestRaw);
 
     results.push({
       name: names[li] + 'A',
-      redness: Math.round(aBestRaw * 10) / 10,
-      corrected: Math.round(aVal * 10) / 10,
-      value: classifyWithCalibration(aVal, names[li] + 'A'),
+      raw: sigA.raw,
+      corrected: Math.round(Math.max(0, sigA.corrected) * 10) / 10,
+      bg: sigA.bg,
       markers: [names[li] + 'a'],
     });
     results.push({
       name: names[li] + 'B',
-      redness: Math.round(bBestRaw * 10) / 10,
-      corrected: Math.round(bVal * 10) / 10,
-      value: classifyWithCalibration(bVal, names[li] + 'B'),
+      raw: sigB.raw,
+      corrected: Math.round(Math.max(0, sigB.corrected) * 10) / 10,
+      bg: sigB.bg,
       markers: [names[li] + 'b'],
     });
   }
 
-  // Step 4: Check L4 adequacy
-  const l4A = results[6], l4B = results[7];
-  const l4Signal = Math.max(l4A.corrected, l4B.corrected);
-  const l4Valid = l4Signal >= SCORE_THRESHOLDS[0];
+  // Step 5: Self-referencing — max corrected value = 100% reference
+  let refMax = 0;
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].corrected > refMax) refMax = results[i].corrected;
+  }
+
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    r.redness = Math.round(r.raw * 10) / 10;
+    r.value = classifyRelative(r.corrected, refMax);
+  }
+
+  results.refMax = Math.round(refMax * 10) / 10;
+
+  // Step 6: Adequacy — check if strongest signal is meaningful
+  const allCorrected = results.map(r => r.corrected).filter(v => v > 0);
+  const maxSignal = allCorrected.length > 0 ? Math.max(...allCorrected) : 0;
+  const valid = maxSignal >= 3;
   results.adequacy = {
-    valid: l4Valid,
-    confidence: l4Valid ? 'high' : 'low',
-    message: l4Valid ? '' : 'Control line (L4) not detected --- test may be invalid. Ensure good lighting and focus.',
+    valid: valid,
+    confidence: valid ? 'high' : 'low',
+    message: valid ? '' : 'No significant line detected. Ensure good lighting and focus.',
   };
 
-  results.thresholds = {
-    score0: SCORE_THRESHOLDS[0],
-    score1: SCORE_THRESHOLDS[1],
-    score2: SCORE_THRESHOLDS[2],
-  };
+  results.thresholds = { score0: 0, score1: 1, score2: 2 };
 
   return results;
 }
@@ -1864,7 +1830,6 @@ function openCamera() {
   document.getElementById("camVideo").style.display = "none";
   document.getElementById("camGuide").style.display = "none";
   document.getElementById("camBtnRow").style.display = "flex";
-  document.getElementById("camCalibrateRow").style.display = "flex";
   document.getElementById("camAcceptRow").style.display = "none";
   document.getElementById("camFileInput").value = "";
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -1900,10 +1865,8 @@ function openCamera() {
 function closeCamera() {
   if (camStream.current) { camStream.current.getTracks().forEach(t => t.stop()); camStream.current = null; }
   document.getElementById("cameraOverlay").classList.remove("show");
-  document.getElementById("camCalibration").style.display = "none";
   document.getElementById("camTitle").textContent = "Scan Test Strip";
   document.getElementById("camSub").textContent = "Position the test strip window within the guide and tap Capture.";
-  window._calibrationMode = false;
 }
 
 function captureAndAnalyze() {
@@ -1944,11 +1907,11 @@ function showScanResults(results) {
           '<strong>' + (adequacy.valid ? 'Low Confidence' : 'Warning') + ':</strong> ' + adequacy.message + '</div>';
       }
 
-      // Show unified thresholds
-      const th = results.thresholds || {};
-      const thHtml = th.score0 !== undefined
+      // Show relative scoring reference
+      const refMax = results.refMax || 0;
+      const thHtml = refMax > 0
         ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'thresholds: 0&lt;' + th.score0 + ' | 1≥' + th.score1 + ' | 2≥' + th.score2 + ' | 3≥' + th.score2 +
+          'Relative scoring (max reference = ' + refMax.toFixed(1) + ') &mdash; 1:1&ndash;35% | 2:36&ndash;70% | 3:71&ndash;100%' +
           '</div>'
         : '';
 
@@ -1957,25 +1920,25 @@ function showScanResults(results) {
         const a = results[i], b = results[i + 1];
         const lineLabel = a.name.charAt(0) + a.name.charAt(1);
         const valColor = (v) => v >= 2 ? 'var(--green)' : v === 1 ? 'var(--orange)' : 'var(--text-tertiary)';
-        const diagHtml = (a.corrected !== undefined)
-          ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'c=' + a.corrected +
-            '</span>'
+        const diagA = (a.bg !== undefined)
+          ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
+            'raw=' + a.raw.toFixed(1) + ' bg=' + a.bg.toFixed(1) + '</span>'
           : '';
-        const diagHtmlB = (b.corrected !== undefined)
-          ? '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.6;margin-left:4px;">' +
-            'c=' + b.corrected +
-            '</span>'
+        const diagB = (b.bg !== undefined)
+          ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
+            'raw=' + b.raw.toFixed(1) + ' bg=' + b.bg.toFixed(1) + '</span>'
           : '';
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
           '<div style="display:flex;align-items:center;gap:4px;min-width:28px;"><span style="font-weight:600;">' + lineLabel + '</span></div>' +
           '<div style="display:flex;align-items:center;gap:4px;">' +
             '<span style="font-size:12px;color:var(--text-tertiary);">A:</span>' +
-            '<span style="font-weight:600;color:' + valColor(a.value) + ';min-width:16px;text-align:center;">' + a.value + '</span>' + diagHtml +
+            '<span style="font-weight:600;color:' + valColor(a.value) + ';min-width:16px;text-align:center;">' + a.value + '</span>' +
+            '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.7;">(' + a.corrected.toFixed(1) + ')</span>' + diagA +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:4px;margin-left:8px;">' +
             '<span style="font-size:12px;color:var(--text-tertiary);">B:</span>' +
-            '<span style="font-weight:600;color:' + valColor(b.value) + ';min-width:16px;text-align:center;">' + b.value + '</span>' + diagHtmlB +
+            '<span style="font-weight:600;color:' + valColor(b.value) + ';min-width:16px;text-align:center;">' + b.value + '</span>' +
+            '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.7;">(' + b.corrected.toFixed(1) + ')</span>' + diagB +
           '</div>' +
         '</div>';
       }
@@ -1984,7 +1947,6 @@ function showScanResults(results) {
       document.getElementById("camNotDetected").style.display = "block";
     }
     document.getElementById("camBtnRow").style.display = "none";
-    document.getElementById("camCalibrateRow").style.display = "none";
     document.getElementById("camAcceptRow").style.display = "flex";
   }, 500);
 }
@@ -2070,7 +2032,6 @@ document.getElementById("camAcceptBtn").addEventListener("click", acceptScanResu
 document.getElementById("camRetakeBtn").addEventListener("click", () => {
   document.getElementById("camResult").style.display = "none";
   document.getElementById("camBtnRow").style.display = "flex";
-  document.getElementById("camCalibrateRow").style.display = "flex";
   document.getElementById("camAcceptRow").style.display = "none";
   document.getElementById("camCaptureBtn").style.display = camStream.current ? "block" : "none";
   document.getElementById("camUploadBtn").style.display = "";
@@ -2094,24 +2055,6 @@ document.getElementById("camFileInput").addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     analyzeUploadedFile(e.target.files[0]);
   }
-});
-// Calibration
-document.getElementById("camCalibrateBtn").addEventListener("click", openCalibration);
-document.getElementById("calUploadBtn").addEventListener("click", function() { document.getElementById("calFileInput").click(); });
-document.getElementById("calFileInput").addEventListener("change", function(e) {
-  if (e.target.files && e.target.files[0]) handleCalibrationUpload(e.target.files[0]);
-});
-document.getElementById("calSaveBtn").addEventListener("click", saveCalibration);
-document.getElementById("calClearBtn").addEventListener("click", clearCalibration);
-document.getElementById("calBackBtn").addEventListener("click", closeCalibration);
-document.getElementById("calScoreGrid").addEventListener("click", function(e) {
-  var btn = e.target.closest ? e.target.closest('.cal-score-btn') : null;
-  if (!btn) return;
-  var parent = btn.parentElement;
-  if (!parent) return;
-  var siblings = parent.querySelectorAll('.cal-score-btn');
-  for (var i = 0; i < siblings.length; i++) siblings[i].classList.remove('cal-score-selected');
-  btn.classList.add('cal-score-selected');
 });
 </script>
 </body>
