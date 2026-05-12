@@ -552,13 +552,6 @@
         </p>
         <div class="strip-grid" id="stripGrid"></div>
       </div>
-      <!-- Detection Zone Preview — always visible on all devices -->
-      <div id="scanPreview" style="margin-bottom:8px;">
-        <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Detection Zones (drag <span style="color:rgba(0,255,200,0.9);">cyan handles</span> to adjust):</div>
-        <div style="position:relative;background:#111;border-radius:8px;overflow:hidden;touch-action:none;">
-          <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;touch-action:none;-webkit-touch-callout:none;"></canvas>
-        </div>
-      </div>
       <div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
         <button class="btn btn-secondary" id="scanCameraBtn" style="width:100%;padding:14px 16px;display:inline-flex;align-items:center;justify-content:center;gap:6px;font-size:14px;">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -681,6 +674,15 @@
         <div id="camNotDetected" style="display:none;background:rgba(214,79,74,0.08);border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">
           <p style="font-size:14px;font-weight:600;color:#b83a36;" id="camResultText">No test lines detected.</p>
           <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;" id="camResultSub">Try aligning the strip more carefully or adjust lighting.</p>
+        </div>
+
+        <!-- Warped strip display -->
+        <div id="camWarpSection" style="display:none;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Normalized Strip with Detected Pads:</div>
+          <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
+            <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
+          </div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Click a pad in calibration mode</div>
         </div>
 
         <!-- Calibration UI -->
@@ -1110,7 +1112,7 @@ function setLang(l) {
 
 // ===== STATE =====
 // Larger drag handles on touch devices for easy grabbing
-var _cvHandleSize = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 48 : 24;
+var _cvHandleSize = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 40 : 24;
 let currentProfile = loadProfile();
 let currentBands = { ...defaultBands };
 let lastResult = null;
@@ -2047,8 +2049,8 @@ function drawOverlay(results, measurements, maxDist) {
     var region = _qrScanRegions[i];
     var padR = padRectFromQR(region, i);
     var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
-    // ROI boundary (blue outline, brighter on touch devices)
-    ctx.strokeStyle = 'ontouchstart' in window ? 'rgba(0, 200, 255, 0.7)' : 'rgba(0, 200, 255, 0.4)';
+    // ROI boundary (thin blue outline)
+    ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
     // Drag handle (larger for easy grabbing; bigger on touch devices)
@@ -2284,6 +2286,7 @@ function openCamera() {
   overlay.classList.add("show");
   // Reset UI
   document.getElementById("camResult").style.display = "none";
+  document.getElementById("camWarpSection").style.display = "none";
   document.getElementById("camCalSection").style.display = "none";
   document.getElementById("camCaptureBtn").style.display = "none";
   document.getElementById("camPlaceholder").style.display = "flex";
@@ -2349,6 +2352,7 @@ function showScanResults(results) {
   document.getElementById("camProcessing").style.display = "block";
   document.getElementById("camDetectedVals").style.display = "none";
   document.getElementById("camNotDetected").style.display = "none";
+  document.getElementById("camWarpSection").style.display = "none";
   document.getElementById("camCalSection").style.display = "none";
   window._scanResults = results;
   setTimeout(function() {
@@ -2356,6 +2360,7 @@ function showScanResults(results) {
     if (results && results.length > 0) {
       var adequacy = results.adequacy || { valid: true, confidence: 'high', message: '' };
       if (adequacy.valid) {
+        document.getElementById("camWarpSection").style.display = "block";
         document.getElementById("camCalSection").style.display = "block";
       }
       document.getElementById("camDetectedVals").style.display = "block";
@@ -2438,7 +2443,6 @@ renderProfileForm();
 renderHomeSummary();
 renderInsights();
 renderHistory();
-drawROIPreview();
 
 // === Event listeners that depend on rendered elements ===
 // BMI
@@ -2541,29 +2545,6 @@ function applyAndRedisplay() {
 // ===== DRAGGABLE ROI + CALIBRATION on warped canvas =====
 var _warpedCanvas = document.getElementById("warpedCanvas");
 
-// Draw empty ROI preview on the canvas (blue outlines without strip data)
-function drawROIPreview() {
-  var canvas = document.getElementById("warpedCanvas");
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#111';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  for (var i = 0; i < _qrScanRegions.length; i++) {
-    var region = _qrScanRegions[i];
-    var padR = padRectFromQR(region, i);
-    ctx.strokeStyle = 'rgba(0, 200, 255, 0.5)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(padR.x, padR.y, padR.w, padR.h);
-    // Draw handle
-    var hOff = Math.floor(_cvHandleSize * 0.4);
-    ctx.fillStyle = 'rgba(0, 255, 200, 0.9)';
-    ctx.fillRect(padR.x - hOff, padR.y - hOff, _cvHandleSize, _cvHandleSize);
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(padR.x - hOff, padR.y - hOff, _cvHandleSize, _cvHandleSize);
-  }
-}
-
 // Helper: compute ROI index from canvas-relative mouse position
 function getROIIndexFromXY(canvas, x, y) {
   if (_cvStripData) {
@@ -2597,13 +2578,11 @@ function canvasCoords(canvas, evt) {
 
 // Check if point is near the drag handle of a pad
 function getHandleIdx(canvas, x, y) {
-  var isTouch = 'ontouchstart' in window;
-  var hitSize = isTouch ? 56 : _cvHandleSize;
   for (var i = 0; i < _qrScanRegions.length; i++) {
     var pr = padRectFromQR(_qrScanRegions[i], i);
-    var hOff = Math.floor(hitSize * 0.4);
+    var hOff = Math.floor(_cvHandleSize * 0.4);
     var hx = pr.x - hOff, hy = pr.y - hOff;
-    if (x >= hx && x <= hx + hitSize && y >= hy && y <= hy + hitSize) return i;
+    if (x >= hx && x <= hx + _cvHandleSize && y >= hy && y <= hy + _cvHandleSize) return i;
   }
   return -1;
 }
@@ -2724,7 +2703,6 @@ document.addEventListener("mouseup", function(e) {
 
 // --- Touch equivalents ---
 _warpedCanvas.addEventListener("touchstart", function(e) {
-  e.preventDefault(); // iOS: prevent any scroll/zoom interception
   if (e.touches.length !== 1) return;
   var c = canvasCoords(this, e);
   var hIdx = getHandleIdx(this, c.x, c.y);
@@ -2736,6 +2714,7 @@ _warpedCanvas.addEventListener("touchstart", function(e) {
       origDx: _cvPadOffsets[hIdx].dx,
       origDy: _cvPadOffsets[hIdx].dy
     };
+    e.preventDefault();
     return;
   }
   if (!_cvCalMode || !_cvStripData) return;
@@ -2754,7 +2733,6 @@ _warpedCanvas.addEventListener("touchstart", function(e) {
 
 document.addEventListener("touchmove", function(e) {
   if (!_dragState || e.touches.length !== 1) return;
-  e.preventDefault(); // prevent iOS scroll during drag
   var dx = _dragState.origDx + (e.touches[0].clientX - _dragState.startMouseX);
   var dy = _dragState.origDy + (e.touches[0].clientY - _dragState.startMouseY);
   _cvPadOffsets[_dragState.idx].dx = dx;
@@ -2766,7 +2744,7 @@ document.addEventListener("touchmove", function(e) {
     }
     drawOverlay(_cvResults, _cvStripData, maxDist);
   }
-}, {passive: false});
+});
 
 document.addEventListener("touchend", function(e) {
   if (!_dragState) return;
