@@ -1120,7 +1120,7 @@ function setLang(l) {
 // ===== STATE =====
 // Mobile detection: larger pad windows for less precise alignment, bigger drag handles
 var _cvMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
-var _cvHandleSize = _cvMobile ? 40 : 24;
+var _cvHandleSize = _cvMobile ? 50 : 24;
 let currentProfile = loadProfile();
 let currentBands = { ...defaultBands };
 let lastResult = null;
@@ -1172,9 +1172,10 @@ function padRectFromQR(qrRegion, idx, detectedQr) {
   var cx = (detectedQr && detectedQr.qrX != null) ? detectedQr.qrX : qrRegion.cx;
   var cy = (detectedQr && detectedQr.qrY != null) ? detectedQr.qrY : qrRegion.cy;
   var mobile = _cvMobile;
-  var pw = mobile ? 60 : 60;
-  var ph = mobile ? 40 : 40;
-  var padLeft = Math.max(0, Math.round(cx - 62));
+  var pw = mobile ? 44 : 60;
+  var ph = mobile ? 26 : 40;
+  var padOffsets = [100, 120, 150, 150, 120, 120, 150, 150];
+  var padLeft = Math.max(0, Math.round(cx - ((idx >= 0 && idx < 8) ? padOffsets[idx] : 90)));
   var padTop  = Math.max(0, Math.round(cy - Math.floor(ph / 2)));
   var off = (idx >= 0 && idx < 8) ? _cvPadOffsets[idx] : {dx:0, dy:0};
   return {
@@ -2061,7 +2062,7 @@ function drawOverlay(results, measurements, maxDist) {
   }
   for (var i = 0; i < results.length && i < _qrScanRegions.length; i++) {
     var region = _qrScanRegions[i];
-    var padR = padRectFromQR(region, i, detectedQr);
+    var padR = padRectFromQR(region, i, window._cvQrMap ? window._cvQrMap[i] || null : null);
     var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
     // ROI boundary (thin blue outline)
     ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
@@ -2074,6 +2075,20 @@ function drawOverlay(results, measurements, maxDist) {
     ctx.strokeStyle = 'rgba(255,255,255,0.7)';
     ctx.lineWidth = 1.5;
     ctx.strokeRect(x - hOff, y - hOff, _cvHandleSize, _cvHandleSize);
+  }
+  // Show detected QR code positions
+  if (window._cvQrMap) {
+    for (var qi = 0; qi < _qrScanRegions.length; qi++) {
+      var qr = window._cvQrMap[qi];
+      if (qr) {
+        ctx.strokeStyle = 'rgba(0, 255, 0, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(qr.qrX - 12, qr.qrY - 12, 24, 24);
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.9)';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(qr.text, qr.qrX + 14, qr.qrY + 4);
+      }
+    }
   }
   // Draw A/B row marker lines on the left edge for reference
   if (window._detectedRowA) {
@@ -2187,6 +2202,7 @@ function processImageWithOpenCV(canvas, source) {
         qrMap[qrCodes[qi].expectedIdx] = qrCodes[qi];
       }
     }
+    window._cvQrMap = qrMap;
     // Always set detected rows using user's QR coordinates (visible reference lines)
     var detectedRowA = _qrScanRegions[0].cy;
     var detectedRowB = _qrScanRegions[1].cy;
@@ -2199,6 +2215,7 @@ function processImageWithOpenCV(canvas, source) {
     window._warpedBaseImg = null;
     window._detectedRowA = null;
     window._detectedRowB = null;
+    window._cvQrMap = null;
     _cvPadOffsets = _cvPadOffsets.map(function(){ return {dx:0, dy:0}; });
     // Build effective reference colors for this scan
     var effRefs = _cvRefColors.slice();
