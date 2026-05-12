@@ -679,7 +679,7 @@
         <!-- Warped strip display -->
         <div id="camWarpSection" style="display:none;margin-bottom:8px;">
           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Normalized Strip with Detected Pads:</div>
-          <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
+          <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;touch-action:none;">
             <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;touch-action:none;-webkit-touch-callout:none;"></canvas>
           </div>
           <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Click a pad in calibration mode</div>
@@ -2578,11 +2578,13 @@ function canvasCoords(canvas, evt) {
 
 // Check if point is near the drag handle of a pad
 function getHandleIdx(canvas, x, y) {
+  var isTouch = 'ontouchstart' in window;
+  var hitSize = isTouch ? 56 : _cvHandleSize;
   for (var i = 0; i < _qrScanRegions.length; i++) {
     var pr = padRectFromQR(_qrScanRegions[i], i);
-    var hOff = Math.floor(_cvHandleSize * 0.4);
+    var hOff = Math.floor(hitSize * 0.4);
     var hx = pr.x - hOff, hy = pr.y - hOff;
-    if (x >= hx && x <= hx + _cvHandleSize && y >= hy && y <= hy + _cvHandleSize) return i;
+    if (x >= hx && x <= hx + hitSize && y >= hy && y <= hy + hitSize) return i;
   }
   return -1;
 }
@@ -2703,6 +2705,7 @@ document.addEventListener("mouseup", function(e) {
 
 // --- Touch equivalents ---
 _warpedCanvas.addEventListener("touchstart", function(e) {
+  e.preventDefault(); // iOS: prevent any scroll/zoom interception
   if (e.touches.length !== 1) return;
   var c = canvasCoords(this, e);
   var hIdx = getHandleIdx(this, c.x, c.y);
@@ -2714,7 +2717,6 @@ _warpedCanvas.addEventListener("touchstart", function(e) {
       origDx: _cvPadOffsets[hIdx].dx,
       origDy: _cvPadOffsets[hIdx].dy
     };
-    e.preventDefault();
     return;
   }
   if (!_cvCalMode || !_cvStripData) return;
@@ -2733,6 +2735,7 @@ _warpedCanvas.addEventListener("touchstart", function(e) {
 
 document.addEventListener("touchmove", function(e) {
   if (!_dragState || e.touches.length !== 1) return;
+  e.preventDefault(); // prevent iOS scroll during drag
   var dx = _dragState.origDx + (e.touches[0].clientX - _dragState.startMouseX);
   var dy = _dragState.origDy + (e.touches[0].clientY - _dragState.startMouseY);
   _cvPadOffsets[_dragState.idx].dx = dx;
@@ -2744,7 +2747,7 @@ document.addEventListener("touchmove", function(e) {
     }
     drawOverlay(_cvResults, _cvStripData, maxDist);
   }
-});
+}, {passive: false});
 
 document.addEventListener("touchend", function(e) {
   if (!_dragState) return;
