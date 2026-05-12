@@ -1159,9 +1159,12 @@ var _qrScanRegions = [
 
 // Compute pad measurement rect from known QR position (pad ~1 cm left of QR center)
 // Scale: 61.5 px/cm. ROI is ~1.0 cm wide x ~0.65 cm tall, offset ~1.3 cm left of QR center.
-function padRectFromQR(qrRegion, idx) {
-  var padLeft = Math.max(0, qrRegion.cx - 80);
-  var padTop  = Math.max(0, qrRegion.cy - 20);
+function padRectFromQR(qrRegion, idx, detectedQr) {
+  // Use detected QR position if available (1cm = ~62px left of QR center)
+  var cx = (detectedQr && detectedQr.qrX != null) ? detectedQr.qrX : qrRegion.cx;
+  var cy = (detectedQr && detectedQr.qrY != null) ? detectedQr.qrY : qrRegion.cy;
+  var padLeft = Math.max(0, Math.round(cx - 62));  // 1cm left at 61.5 px/cm
+  var padTop  = Math.max(0, Math.round(cy - 20));
   var off = (idx >= 0 && idx < 8) ? _cvPadOffsets[idx] : {dx:0, dy:0};
   return {
     x: Math.max(0, padLeft + off.dx),
@@ -1924,7 +1927,7 @@ function measurePadValue(roiRgba, refs) {
   // Output the darkest value with more than 40% of pixels (majority-based detection)
   var strongest = 0;
   if (counts[3] > total * 0.1) strongest = 3;
-  else if (counts[2] > total * 0.1) strongest = 2;
+  else if (counts[2] > total * 0.05) strongest = 2;
   else if (counts[1] > total * 0.3) strongest = 1;
 
   return {
@@ -1981,7 +1984,7 @@ function reclassifyPixels(pixelData, w, h, refs) {
   }
   var strongest = 0;
   if (counts[3] > total * 0.1) strongest = 3;
-  else if (counts[2] > total * 0.1) strongest = 2;
+  else if (counts[2] > total * 0.05) strongest = 2;
   else if (counts[1] > total * 0.3) strongest = 1;
   return {
     value: strongest,
@@ -2193,10 +2196,11 @@ function processImageWithOpenCV(canvas, source) {
     }
     for (var i = 0; i < _qrScanRegions.length; i++) {
       var region = _qrScanRegions[i];
-      // Use known row Y positions (from QR coords or left-edge refinement)
+      // Use detected QR position if available, otherwise fall back to fixed coords
       var isA = region.name.indexOf('A') >= 0;
+      var detectedQr = qrMap[i] || null;
       region = { cx: region.cx, cy: isA ? detectedRowA : detectedRowB, padName: region.padName, marker: region.marker, name: region.name };
-      var padR = padRectFromQR(region, i);
+      var padR = padRectFromQR(region, i, detectedQr);
       var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
       var roi = warped.roi(rect);
       var padResult = measurePadValue(roi, effRefs);
