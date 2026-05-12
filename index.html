@@ -680,7 +680,7 @@
         <div id="camWarpSection" style="display:none;margin-bottom:8px;">
           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Normalized Strip with Detected Pads:</div>
           <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
-            <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
+            <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;touch-action:none;-webkit-touch-callout:none;"></canvas>
           </div>
           <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Click a pad in calibration mode</div>
         </div>
@@ -1112,7 +1112,7 @@ function setLang(l) {
 
 // ===== STATE =====
 // Larger drag handles on touch devices for easy grabbing
-var _cvHandleSize = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 40 : 24;
+var _cvHandleSize = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 48 : 24;
 let currentProfile = loadProfile();
 let currentBands = { ...defaultBands };
 let lastResult = null;
@@ -2049,8 +2049,8 @@ function drawOverlay(results, measurements, maxDist) {
     var region = _qrScanRegions[i];
     var padR = padRectFromQR(region, i);
     var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
-    // ROI boundary (thin blue outline)
-    ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+    // ROI boundary (blue outline, brighter on touch devices)
+    ctx.strokeStyle = 'ontouchstart' in window ? 'rgba(0, 200, 255, 0.7)' : 'rgba(0, 200, 255, 0.4)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
     // Drag handle (larger for easy grabbing; bigger on touch devices)
