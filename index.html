@@ -639,37 +639,28 @@
         </div>
         <!-- ROI Guide Overlay -->
         <div id="camGuide" style="position:absolute;inset:0;display:none;pointer-events:none;">
-          <!-- Dimmed background with cutout for the strip -->
+          <!-- Dimmed background -->
           <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);"></div>
-          <!-- Strip rectangle (13:18.5 aspect ratio = 0.703:1) -->
-          <div style="position:absolute;left:22%;right:22%;top:10%;bottom:10%;border:2.5px solid rgba(255,255,255,0.7);border-radius:8px;background:rgba(255,255,255,0.02);box-shadow:0 0 0 0 rgba(255,255,255,0.1);">
-            <!-- Pad zone left of each QR column (4 columns) -->
-            <div style="position:absolute;left:1%;right:73%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
-            <div style="position:absolute;left:28%;right:46%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
-            <div style="position:absolute;left:49%;right:21%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
-            <!-- QR zone (right ~27% of strip) -->
-            <div style="position:absolute;left:73%;right:0;top:0;bottom:0;border-left:1.5px solid rgba(0,200,255,0.4);background:rgba(0,200,255,0.06);border-radius:0 6px 6px 0;"></div>
-            <!-- QR label -->
-            <div style="position:absolute;left:75%;top:4%;font-size:9px;color:rgba(0,200,255,0.6);font-weight:500;letter-spacing:1px;">QR</div>
-            <!-- Pad label -->
-            <div style="position:absolute;left:4%;top:4%;font-size:9px;color:rgba(255,255,255,0.3);font-weight:400;">PADS</div>
-            <!-- Row labels -->
-            <div style="position:absolute;left:1%;top:47%;font-size:8px;color:rgba(255,255,255,0.25);">B</div>
-            <div style="position:absolute;left:1%;top:55%;font-size:8px;color:rgba(255,255,255,0.25);">A</div>
+          <!-- QR zone (right ~27% of frame) with 8 marker dots -->
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+            <div style="position:relative;width:min(56vw, calc(80vh * 13/18.5));aspect-ratio:13/18.5;">
+              <!-- Right-side QR column highlight -->
+              <div style="position:absolute;left:73%;right:0;top:0;bottom:0;background:rgba(0,200,255,0.08);border-radius:6px;"></div>
+              <div style="position:absolute;left:75%;top:4%;font-size:9px;color:rgba(0,200,255,0.6);font-weight:500;letter-spacing:1px;">QR</div>
+              <!-- Row A (top) — 4 QR marker dots -->
+              <div style="position:absolute;left:27%;top:36%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:49%;top:36%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:71%;top:36%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:91%;top:36%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <!-- Row B (bottom) — 4 QR marker dots -->
+              <div style="position:absolute;left:27%;top:46%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:49%;top:46%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:71%;top:46%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+              <div style="position:absolute;left:91%;top:46%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+            </div>
           </div>
-          <!-- 8 QR code markers (2 rows x 4 columns, positioned at exact fractions) -->
-          <!-- Row B (top row of QR codes, at y=54.1% of strip) -->
-          <div style="position:absolute;left:27%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:38%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:50%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:63%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <!-- Row A (bottom row of QR codes, at y=63.8% of strip) -->
-          <div style="position:absolute;left:27%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:38%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:50%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
-          <div style="position:absolute;left:63%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
           <!-- Instruction text -->
-          <div style="position:absolute;bottom:4%;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.9);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,0.5);" id="camGuideLabel">Align the 8 QR codes with the blue dots &middot; Fit strip in the rectangle</div>
+          <div style="position:absolute;bottom:4%;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.9);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,0.5);" id="camGuideLabel">Align the 8 QR codes with the blue dots</div>
         </div>
       </div>
       <!-- Results after capture -->
@@ -689,15 +680,15 @@
         <div id="camWarpSection" style="display:none;margin-bottom:8px;">
           <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Normalized Strip with Detected Pads:</div>
           <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
-            <canvas id="warpedCanvas" width="800" height="300" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
+            <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
           </div>
-          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Click a pad to set calibration reference</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Click a pad in calibration mode</div>
         </div>
 
         <!-- Calibration UI -->
         <div id="camCalSection" style="display:none;background:rgba(59,130,196,0.04);border-radius:10px;padding:10px;margin-bottom:8px;">
           <div style="font-size:12px;font-weight:600;color:var(--accent-dim);margin-bottom:4px;">Calibration</div>
-          <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">Click a reference button, then click the corresponding pad on the strip image above.</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">1) Click <b>Set Negative</b> &rarr; click a known-negative pad. 2) Click <b>Set Positive</b> &rarr; click a known-strong pad. All pads reclassify. Drag cyan handles to adjust zones.</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
             <button class="btn-cal" id="calNegBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Negative</button>
             <button class="btn-cal" id="calPosBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Positive</button>
@@ -1028,14 +1019,17 @@ function setLang(l) {
   try { localStorage.setItem("crc_lang", l); } catch(_) {}
   document.querySelectorAll(".lang-btn").forEach(b => b.classList.toggle("active", b.dataset.lang === l));
   document.title = t("homeTitle");
-  // Re-render dynamic content
-  renderHomeSummary();
-  renderStripGrid();
-  renderProfileForm();
-  renderInsights();
-  renderHistory();
-  if (lastResult) renderResults(lastResult, currentBands);
-  // Update static labels
+  try {
+    // Re-render dynamic content
+    renderHomeSummary();
+    renderStripGrid();
+    renderProfileForm();
+    renderInsights();
+    renderHistory();
+    if (lastResult) renderResults(lastResult, currentBands);
+  } catch(e) { console.warn('setLang render error:', e); }
+  try {
+    // Update static labels
   document.querySelectorAll(".tab-item").forEach(tab => {
     const key = "tab" + tab.dataset.tab;
     tab.querySelector(".tab-item-label").textContent = t(key);
@@ -1113,9 +1107,12 @@ function setLang(l) {
   document.getElementById("homePrivacyText").textContent = t("privacyText");
   document.getElementById("homeDiscLabel").textContent = t("medDisc");
   document.getElementById("homeDiscText").textContent = t("medDiscText");
+  } catch(e) { console.warn('setLang label error:', e); }
 }
 
 // ===== STATE =====
+// Larger drag handles on touch devices for easy grabbing
+var _cvHandleSize = ('ontouchstart' in window || navigator.maxTouchPoints > 0) ? 40 : 24;
 let currentProfile = loadProfile();
 let currentBands = { ...defaultBands };
 let lastResult = null;
@@ -1123,13 +1120,15 @@ let viewerIndex = null; // history viewer
 
 // ===== OPENCV STATE =====
 let _cvStripData = null;      // raw measurement data for each pad
-let _cvCalNeg = -1;           // normalized redness of negative ref pad
-let _cvCalPos = -1;           // normalized redness of positive ref pad
-let _cvCalPadNeg = -1;        // index of negative ref pad
-let _cvCalPadPos = -1;        // index of positive ref pad
+let _cvStripRawPixels = null; // saved RGB pixel data per pad for recalibration [{data, w, h} or null]
 let _cvCalMode = null;        // 'neg' or 'pos' when awaiting click
 let _cvResults = null;        // last scan results
-let _warpWidth = 800, _warpHeight = 300;
+let _cvPadOffsets = [         // user-drag offsets per pad {dx, dy}, applied on top of padRectFromQR
+  {dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0},
+  {dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0}
+];
+let _dragState = null;       // {idx, startMouseX, startMouseY, origDx, origDy} or null
+let _warpWidth = 800, _warpHeight = 1138;
 let _cvRows = 2, _cvCols = 4;
 let _cvPadNames = [
   'Line1a','Line2a','Line3a','Line4a',
@@ -1140,30 +1139,35 @@ let _cvPadMarkers = [
   'L1b','L2b','L3b','L4b'
 ];
 
-// QR code positions in warped 800x300 image, from physical strip measurements
-// Strip: 13 cm wide x 18.5 cm tall. Origin top-right corner.
-// 1 cm = 800/13 = 61.5 px (X), 300/18.5 = 16.2 px (Y)
-// QR is 1 cm to the RIGHT of each pad
+// Strip: 13 cm wide x 18.5 cm tall. Origin = bottom-left corner of the test strip.
+// Warped image: 800 px wide preserves the 13:18.5 aspect ratio (height = 800*18.5/13 = 1138 px).
+// Scale: 800/13 = 61.5 px/cm for both X and Y.
+// QR codes are 1 cm to the RIGHT of each pad.
+// Coordinates from user: (cm from left, cm from bottom) of test strip.
+// Pixel coords (bottom-left origin): cm * 61.5
+// Top-left image coords: cy = 1138 - Y_bottom
 var _qrScanRegions = [
-  { name: '1A', cx: 585, cy: 191, padName: 'Line1a', marker: 'L1a' },
-  { name: '1B', cx: 585, cy: 162, padName: 'Line1b', marker: 'L1b' },
-  { name: '2A', cx: 406, cy: 191, padName: 'Line2a', marker: 'L2a' },
-  { name: '2B', cx: 406, cy: 162, padName: 'Line2b', marker: 'L2b' },
-  { name: '3A', cx: 234, cy: 191, padName: 'Line3a', marker: 'L3a' },
-  { name: '3B', cx: 234, cy: 162, padName: 'Line3b', marker: 'L3b' },
-  { name: '4A', cx: 74,  cy: 191, padName: 'Line4a', marker: 'L4a' },
-  { name: '4B', cx: 74,  cy: 162, padName: 'Line4b', marker: 'L4b' }
+  { name: '1A', cx: 215, cy: 412, padName: 'Line1a', marker: 'L1a' },
+  { name: '1B', cx: 215, cy: 523, padName: 'Line1b', marker: 'L1b' },
+  { name: '2A', cx: 394, cy: 412, padName: 'Line2a', marker: 'L2a' },
+  { name: '2B', cx: 394, cy: 523, padName: 'Line2b', marker: 'L2b' },
+  { name: '3A', cx: 566, cy: 412, padName: 'Line3a', marker: 'L3a' },
+  { name: '3B', cx: 566, cy: 523, padName: 'Line3b', marker: 'L3b' },
+  { name: '4A', cx: 726, cy: 412, padName: 'Line4a', marker: 'L4a' },
+  { name: '4B', cx: 726, cy: 523, padName: 'Line4b', marker: 'L4b' }
 ];
 
-// Compute pad measurement rect from known QR position (pad is 1 cm left of QR)
-function padRectFromQR(qrRegion) {
-  var padLeft = Math.max(0, qrRegion.cx - 155);
-  var padTop  = Math.max(0, qrRegion.cy - 50);
+// Compute pad measurement rect from known QR position (pad ~1 cm left of QR center)
+// Scale: 61.5 px/cm. ROI is ~1.0 cm wide x ~0.65 cm tall, offset ~1.3 cm left of QR center.
+function padRectFromQR(qrRegion, idx) {
+  var padLeft = Math.max(0, qrRegion.cx - 80);
+  var padTop  = Math.max(0, qrRegion.cy - 20);
+  var off = (idx >= 0 && idx < 8) ? _cvPadOffsets[idx] : {dx:0, dy:0};
   return {
-    x: padLeft,
-    y: padTop,
-    w: Math.min(95, qrRegion.cx - padLeft - 10),
-    h: Math.min(90, _warpHeight - padTop)
+    x: Math.max(0, padLeft + off.dx),
+    y: Math.max(0, padTop + off.dy),
+    w: Math.min(60, _warpWidth - Math.max(0, padLeft + off.dx)),
+    h: Math.min(40, _warpHeight - Math.max(0, padTop + off.dy))
   };
 }
 
@@ -1188,19 +1192,16 @@ function getEmptyResults(msg) {
     arr.push({
       name: _cvPadNames[i],
       markers: [_cvPadMarkers[i]],
-      raw: 0,
-      normalized: 0,
       value: 0,
-      redness: 0,
-      corrected: 0,
-      bg: 0,
-      whiteRef: 0,
+      distance: 0,
+      confidence: 0,
+      avgR: 0,
+      avgG: 0,
+      avgB: 0,
     });
   }
   arr.adequacy = { valid: false, confidence: 'low', message: msg || 'Processing failed.' };
   arr.refMax = 0;
-  arr.whiteRef = 0;
-  arr.thresholds = { score0: 0, score1: 1, score2: 2 };
   return arr;
 }
 
@@ -1232,6 +1233,7 @@ function addHistoryEntry(entry) {
 // ===== RENDER: STRIP GRID =====
 function renderStripGrid() {
   const grid = document.getElementById("stripGrid");
+  if (!grid) return;
   let html = "";
   const keys = ["L1a","L1b","L2a","L2b","L3a","L3b","L4a","L4b"];
   keys.forEach(k => {
@@ -1727,11 +1729,17 @@ function findLargestRectContour(mask, imgArea, minAreaFrac) {
   if (bestIdx < 0) { contours.delete(); return null; }
   var cnt = contours.get(bestIdx);
   var rect = cv.minAreaRect(cnt);
-  var rawPts = rect.points();
-  var boxPts = [];
-  for (var pi = 0; pi < 4; pi++) {
-    boxPts.push({ x: rawPts[pi].x, y: rawPts[pi].y });
-  }
+  // Compute 4 corners from RotatedRect properties (rect.points() not available in all builds)
+  var cx = rect.center.x, cy = rect.center.y;
+  var hw = rect.size.width / 2, hh = rect.size.height / 2;
+  var rad = rect.angle * Math.PI / 180;
+  var cos = Math.cos(rad), sin = Math.sin(rad);
+  var boxPts = [
+    { x: -hw * cos - (-hh) * sin + cx, y: -hw * sin + (-hh) * cos + cy },
+    { x:  hw * cos - (-hh) * sin + cx, y:  hw * sin + (-hh) * cos + cy },
+    { x:  hw * cos -  hh * sin + cx,   y:  hw * sin +  hh * cos + cy },
+    { x: -hw * cos -  hh * sin + cx,   y: -hw * sin +  hh * cos + cy }
+  ];
   contours.delete();
   return orderPoints(boxPts);
 }
@@ -1833,7 +1841,7 @@ function findStripCornersByDarkContent(src) {
   var expL = Math.round(bestRect.w * 1.2);
   var expR = Math.round(bestRect.w * 0.85);
   var expT = Math.round(bestRect.h * 1.0);
-  var expB = Math.round(bestRect.h * 0.4);
+  var expB = Math.round(bestRect.h * 0.3);
   var sx = Math.max(0, bestRect.x - expL);
   var sy = Math.max(0, bestRect.y - expT);
   var sw = Math.min(src.cols - sx, bestRect.w + expL + expR);
@@ -1867,110 +1875,218 @@ function warpStrip(src, corners, dstW, dstH) {
   return warped;
 }
 
-// Measure redness of an ROI using HSV
-function measureROIRedness(roiRgba) {
-  var rgb = new cv.Mat();
-  cv.cvtColor(roiRgba, rgb, cv.COLOR_RGBA2RGB);
-  var hsv = new cv.Mat();
-  cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
-  // Note: roiRgba is a reference from .roi(), don't delete it — parent Mat owns data
-  // Split channels
-  var channels = new cv.MatVector();
-  cv.split(hsv, channels);
-  var h = channels.get(0);
-  var s = channels.get(1);
-  var v = channels.get(2);
-  // H <= 10
-  var maskHL = new cv.Mat();
-  cv.threshold(h, maskHL, 10, 255, cv.THRESH_BINARY_INV);
-  // H >= 160
-  var maskHH = new cv.Mat();
-  cv.threshold(h, maskHH, 160, 255, cv.THRESH_BINARY);
-  // S > 50
-  var maskS = new cv.Mat();
-  cv.threshold(s, maskS, 50, 255, cv.THRESH_BINARY);
-  // Combine: (Hlow OR Hhigh) AND S
-  var maskH = new cv.Mat();
-  cv.bitwise_or(maskHL, maskHH, maskH);
-  var mask = new cv.Mat();
-  cv.bitwise_and(maskH, maskS, mask);
-  var redPixels = cv.countNonZero(mask);
-  var total = roiRgba.rows * roiRgba.cols;
-  if (redPixels < 5) {
-    channels.delete(); hsv.delete(); rgb.delete();
-    maskHL.delete(); maskHH.delete(); maskS.delete(); maskH.delete(); mask.delete();
-    return 0;
-  }
-  var meanV = cv.mean(v, mask);
-  channels.delete(); hsv.delete(); rgb.delete();
-  maskHL.delete(); maskHH.delete(); maskS.delete(); maskH.delete(); mask.delete();
-  return (redPixels / total) * (meanV[0] / 255);
+// Reference RGB colors for value matching (0=negative, 3=strong positive)
+var _cvRefColors = [
+  { r: 201, g: 191, b: 185 },  // 0 — negative/blank
+  { r: 203, g: 175, b: 167 },  // 1 — faint
+  { r: 195, g: 124, b: 118 },  // 2 — medium
+  { r: 150, g: 42,  b: 29  }   // 3 — strong positive
+];
+var _cvCalCustomRefs = [null, null, null, null]; // calibration overrides
+
+// Euclidean distance squared between two RGB values (no sqrt for speed)
+function colorDistSq(c1, c2) {
+  var dr = c1.r - c2.r, dg = c1.g - c2.g, db = c1.b - c2.b;
+  return dr*dr + dg*dg + db*db;
 }
 
-// Map normalized values to 0-3 using calibration thresholds
-function mapToValues(normalizedArr) {
-  var negThresh = (_cvCalNeg >= 0) ? _cvCalNeg : (_cvCalPos >= 0 ? _cvCalPos * 0.08 : 0.10);
-  var posThresh = (_cvCalPos >= 0) ? _cvCalPos : (_cvCalNeg >= 0 ? _cvCalNeg + 0.3 : 0.66);
-  if (posThresh <= negThresh) posThresh = negThresh + 0.2;
-  var range = posThresh - negThresh;
-  var t1 = negThresh + range * 0.25;
-  var t2 = negThresh + range * 0.60;
-  return normalizedArr.map(function(item) {
-    var n = item.normalized;
-    var v;
-    if (n <= negThresh) v = 0;
-    else if (n <= t1) v = 1;
-    else if (n <= t2) v = 2;
-    else v = 3;
+// Classify each pixel in the ROI against reference colors, return strongest value found
+// Also returns average RGB for display
+function measurePadValue(roiRgba, refs) {
+  var rgb = new cv.Mat();
+  cv.cvtColor(roiRgba, rgb, cv.COLOR_RGBA2RGB);
+  var data = rgb.data;
+  var total = roiRgba.rows * roiRgba.cols;
+
+  var counts = [0, 0, 0, 0];
+  var sumR = 0, sumG = 0, sumB = 0;
+
+  for (var i = 0; i < total; i++) {
+    var idx = i * 3;
+    var pxR = data[idx], pxG = data[idx + 1], pxB = data[idx + 2];
+    sumR += pxR; sumG += pxG; sumB += pxB;
+
+    // Classify pixel by nearest reference color
+    var bestDist = Infinity;
+    var bestVal = 0;
+    for (var v = 0; v < refs.length; v++) {
+      var dr = pxR - refs[v].r;
+      var dg = pxG - refs[v].g;
+      var db = pxB - refs[v].b;
+      var d = dr*dr + dg*dg + db*db;
+      if (d < bestDist) { bestDist = d; bestVal = v; }
+    }
+    counts[bestVal]++;
+  }
+
+  rgb.delete();
+
+  // Output the darkest value with more than 40% of pixels (majority-based detection)
+  var strongest = 0;
+  if (counts[3] > total * 0.1) strongest = 3;
+  else if (counts[2] > total * 0.1) strongest = 2;
+  else if (counts[1] > total * 0.3) strongest = 1;
+
+  return {
+    value: strongest,
+    avgR: Math.round(sumR / total),
+    avgG: Math.round(sumG / total),
+    avgB: Math.round(sumB / total),
+    counts: counts,
+  };
+}
+
+// Format results from raw measurements (preserves per-pixel classified values)
+function formatResults(measurements) {
+  var maxDist = 255 * Math.sqrt(3);
+  return measurements.map(function(m) {
+    var dist = 0;
+    var pixel = { r: m.avgR, g: m.avgG, b: m.avgB };
+    var ref = _cvRefColors[m.value];
+    if (ref) dist = Math.sqrt(colorDistSq(pixel, ref));
     return {
-      name: item.name,
-      markers: [item.marker],
-      row: item.row,
-      col: item.col,
-      raw: item.raw,
-      normalized: n,
-      value: v,
-      redness: Math.round(item.raw * 10) / 10,
-      corrected: Math.round(n * 100) / 100,
-      bg: 0,
-      whiteRef: 0,
-      qrRect: item.qrRect || null,
+      name: m.name,
+      markers: [m.marker],
+      row: m.row,
+      col: m.col,
+      value: m.value, // from per-pixel classification
+      distance: Math.round(dist * 10) / 10,
+      confidence: Math.max(0, Math.min(1, 1 - dist / maxDist)),
+      avgR: m.avgR,
+      avgG: m.avgG,
+      avgB: m.avgB,
+      counts: m.counts || null,
+      qrRect: m.qrRect || null,
     };
   });
 }
 
-// Draw ROI boxes and value overlays on the warped canvas using known pad positions
-function drawOverlay(results, normalized, maxRaw) {
+// Re-run per-pixel classification on saved raw pixel data with (possibly updated) refs
+function reclassifyPixels(pixelData, w, h, refs) {
+  var total = w * h;
+  var counts = [0, 0, 0, 0];
+  var sumR = 0, sumG = 0, sumB = 0;
+  for (var pi = 0; pi < total; pi++) {
+    var idx = pi * 3;
+    var pxR = pixelData[idx], pxG = pixelData[idx + 1], pxB = pixelData[idx + 2];
+    sumR += pxR; sumG += pxG; sumB += pxB;
+    // Classify pixel by nearest reference color
+    var bestDist = Infinity, bestVal = 0;
+    for (var v = 0; v < refs.length; v++) {
+      var dr = pxR - refs[v].r, dg = pxG - refs[v].g, db = pxB - refs[v].b;
+      var d = dr*dr + dg*dg + db*db;
+      if (d < bestDist) { bestDist = d; bestVal = v; }
+    }
+    counts[bestVal]++;
+  }
+  var strongest = 0;
+  if (counts[3] > total * 0.1) strongest = 3;
+  else if (counts[2] > total * 0.1) strongest = 2;
+  else if (counts[1] > total * 0.3) strongest = 1;
+  return {
+    value: strongest,
+    avgR: Math.round(sumR / total),
+    avgG: Math.round(sumG / total),
+    avgB: Math.round(sumB / total),
+    counts: counts
+  };
+}
+
+// Recompute results using per-pixel reclassification on saved raw data
+function computeResults() {
+  if (!_cvStripData || !_cvStripRawPixels) return _cvStripData || [];
+  var refs = _cvRefColors.slice();
+  for (var i = 0; i < 4; i++) {
+    if (_cvCalCustomRefs[i]) refs[i] = _cvCalCustomRefs[i];
+  }
+  var maxDist = 255 * Math.sqrt(3);
+  return _cvStripData.map(function(m, idx) {
+    var raw = _cvStripRawPixels[idx];
+    var pr;
+    if (raw && raw.data && raw.data.length > 0) {
+      pr = reclassifyPixels(raw.data, raw.w, raw.h, refs);
+    } else {
+      // Fallback: use stored average
+      var bestIdx = 0, bestD = Infinity;
+      var pixel = { r: m.avgR, g: m.avgG, b: m.avgB };
+      for (var v = 0; v < refs.length; v++) {
+        var d = colorDistSq(pixel, refs[v]);
+        if (d < bestD) { bestD = d; bestIdx = v; }
+      }
+      pr = { value: bestIdx, avgR: m.avgR, avgG: m.avgG, avgB: m.avgB };
+    }
+    var dist = 0;
+    var ref = refs[pr.value];
+    if (ref) dist = Math.sqrt(colorDistSq({r:pr.avgR, g:pr.avgG, b:pr.avgB}, ref));
+    return {
+      name: m.name,
+      markers: [m.marker],
+      row: m.row,
+      col: m.col,
+      value: pr.value,
+      distance: Math.round(dist * 10) / 10,
+      confidence: Math.max(0, Math.min(1, 1 - dist / maxDist)),
+      avgR: pr.avgR, avgG: pr.avgG, avgB: pr.avgB,
+      counts: pr.counts || null,
+      qrRect: m.qrRect || null,
+    };
+  });
+}
+
+// Draw ROI boxes and value overlays on the warped canvas
+function drawOverlay(results, measurements, maxDist) {
   var canvas = document.getElementById('warpedCanvas');
   if (!canvas) return;
   var ctx = canvas.getContext('2d');
+  // Save clean warped image on first overlay draw
+  if (!window._warpedBaseImg) {
+    window._warpedBaseImg = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  } else {
+    // Restore clean warped image (erases previous overlays)
+    ctx.putImageData(window._warpedBaseImg, 0, 0);
+  }
   for (var i = 0; i < results.length && i < _qrScanRegions.length; i++) {
-    var r = results[i];
     var region = _qrScanRegions[i];
-    var padR = padRectFromQR(region);
+    var padR = padRectFromQR(region, i);
     var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
-    // ROI boundary
-    ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x, y, w, h);
-    // Value background label
-    var valColors = ['rgba(100,100,100,0.5)', 'rgba(255,200,50,0.6)', 'rgba(255,120,50,0.6)', 'rgba(255,0,0,0.6)'];
-    ctx.fillStyle = valColors[r.value] || 'rgba(100,100,100,0.5)';
-    ctx.fillRect(x + 2, y + 2, w - 4, 22);
-    // Label and value
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px sans-serif';
-    ctx.fillText(r.name + '=' + r.value, x + 6, y + 17);
-    // Normalized percentage
-    ctx.font = '10px sans-serif';
-    ctx.fillStyle = 'rgba(255,255,255,0.7)';
-    ctx.fillText((r.normalized * 100).toFixed(0) + '%', x + 6, y + h - 5);
-    // QR scan box outline
+    // ROI boundary (thin blue outline)
     ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(region.cx - 65, region.cy - 27, 130, 55);
+    ctx.strokeRect(x, y, w, h);
+    // Drag handle (larger for easy grabbing; bigger on touch devices)
+    var hOff = Math.floor(_cvHandleSize * 0.4);
+    ctx.fillStyle = 'rgba(0, 255, 200, 0.9)';
+    ctx.fillRect(x - hOff, y - hOff, _cvHandleSize, _cvHandleSize);
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - hOff, y - hOff, _cvHandleSize, _cvHandleSize);
+  }
+  // Draw A/B row marker lines on the left edge for reference
+  if (window._detectedRowA) {
+    ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, window._detectedRowA);
+    ctx.lineTo(100, window._detectedRowA);
+    ctx.stroke();
     ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.7)';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('A >>', 4, window._detectedRowA - 4);
+  }
+  if (window._detectedRowB) {
+    ctx.strokeStyle = 'rgba(255, 200, 0, 0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.beginPath();
+    ctx.moveTo(0, window._detectedRowB);
+    ctx.lineTo(100, window._detectedRowB);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.7)';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.fillText('B >>', 4, window._detectedRowB - 4);
   }
 }
 
@@ -1981,7 +2097,7 @@ function scanQRCodes(warpedCanvas) {
   try {
     var ctx = warpedCanvas.getContext('2d');
     var found = [];
-    var boxW = 130, boxH = 55;
+    var boxW = 100, boxH = 50;
     for (var i = 0; i < _qrScanRegions.length; i++) {
       var qr = _qrScanRegions[i];
       var scanX = Math.max(0, Math.round(qr.cx - boxW / 2));
@@ -2017,7 +2133,7 @@ function scanQRCodes(warpedCanvas) {
 
 
 // Main OpenCV scanning pipeline
-function processImageWithOpenCV(canvas) {
+function processImageWithOpenCV(canvas, source) {
   if (!cvReady) {
     if (openCvFailed) return getEmptyResults('OpenCV.js failed to load. Check your internet connection and reload.');
     return getEmptyResults('OpenCV.js is still loading. Please wait.');
@@ -2029,15 +2145,22 @@ function processImageWithOpenCV(canvas) {
     return getEmptyResults('Failed to read image: ' + e.message);
   }
   try {
-    corners = findStripCorners(src);
-    if (!corners) {
-      src.delete();
-      return getEmptyResults('Strip not found. Ensure the test strip is clearly visible against a contrasting background with good lighting.');
-    }
-    warped = warpStrip(src, corners, _warpWidth, _warpHeight);
-    if (!warped || warped.empty()) {
-      src.delete();
-      return getEmptyResults('Failed to warp strip. Try a different camera angle.');
+    if (source === 'upload') {
+      // Upload mode: entire image IS the strip — resize directly to unified canvas size
+      warped = new cv.Mat();
+      cv.resize(src, warped, new cv.Size(_warpWidth, _warpHeight), 0, 0, cv.INTER_LINEAR);
+    } else {
+      // Camera mode: detect strip against background and perspective-warp it
+      corners = findStripCorners(src);
+      if (!corners) {
+        src.delete();
+        return getEmptyResults('Strip not found. Ensure the test strip is clearly visible against a contrasting background with good lighting.');
+      }
+      warped = warpStrip(src, corners, _warpWidth, _warpHeight);
+      if (!warped || warped.empty()) {
+        src.delete();
+        return getEmptyResults('Failed to warp strip. Try a different camera angle.');
+      }
     }
     // Display warped image on canvas
     cv.imshow('warpedCanvas', warped);
@@ -2050,55 +2173,77 @@ function processImageWithOpenCV(canvas) {
         qrMap[qrCodes[qi].expectedIdx] = qrCodes[qi];
       }
     }
+    // Always set detected rows using user's QR coordinates (visible reference lines)
+    var detectedRowA = _qrScanRegions[0].cy;
+    var detectedRowB = _qrScanRegions[1].cy;
+    // Store for overlay visualization
+    window._detectedRowA = detectedRowA;
+    window._detectedRowB = detectedRowB;
     // Measure each pad at its known position (from physical strip measurements)
     var rawValues = [];
+    _cvStripRawPixels = null;
+    window._warpedBaseImg = null;
+    window._detectedRowA = null;
+    window._detectedRowB = null;
+    _cvPadOffsets = _cvPadOffsets.map(function(){ return {dx:0, dy:0}; });
+    // Build effective reference colors for this scan
+    var effRefs = _cvRefColors.slice();
+    for (var ri = 0; ri < 4; ri++) {
+      if (_cvCalCustomRefs[ri]) effRefs[ri] = _cvCalCustomRefs[ri];
+    }
     for (var i = 0; i < _qrScanRegions.length; i++) {
       var region = _qrScanRegions[i];
-      var padR = padRectFromQR(region);
+      // Use known row Y positions (from QR coords or left-edge refinement)
+      var isA = region.name.indexOf('A') >= 0;
+      region = { cx: region.cx, cy: isA ? detectedRowA : detectedRowB, padName: region.padName, marker: region.marker, name: region.name };
+      var padR = padRectFromQR(region, i);
       var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
       var roi = warped.roi(rect);
-      var score = measureROIRedness(roi);
+      var padResult = measurePadValue(roi, effRefs);
       var padIdx = getPadIdxFromQRText(region.name);
       var row = Math.floor(padIdx / _cvCols);
       var col = padIdx % _cvCols;
+      // Save raw RGB pixel data for recalibration
+      var rgb2 = new cv.Mat();
+      cv.cvtColor(roi, rgb2, cv.COLOR_RGBA2RGB);
+      var pixData = new Uint8Array(rgb2.data);
+      if (!_cvStripRawPixels) _cvStripRawPixels = [];
+      _cvStripRawPixels[i] = { data: pixData, w: rgb2.cols, h: rgb2.rows };
+      rgb2.delete();
       rawValues.push({
         name: region.padName,
         marker: region.marker,
-        raw: score,
+        value: padResult.value,
+        avgR: padResult.avgR,
+        avgG: padResult.avgG,
+        avgB: padResult.avgB,
+        counts: padResult.counts,
         row: row,
         col: col,
         qrRect: qrMap[padIdx] ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h } : { x: padR.x, y: padR.y, w: padR.w, h: padR.h },
       });
     }
-    // Normalize
-    var maxRaw = 0;
-    for (var i = 0; i < rawValues.length; i++) {
-      if (rawValues[i].raw > maxRaw) maxRaw = rawValues[i].raw;
-    }
-    if (maxRaw < 0.001) maxRaw = 1;
-    var normalized = rawValues.map(function(item) {
-      return { name: item.name, marker: item.marker, raw: item.raw, row: item.row, col: item.col, normalized: item.raw / maxRaw, qrRect: item.qrRect };
-    });
-    _cvStripData = normalized;
-    var results = mapToValues(normalized);
+    _cvStripData = rawValues;
+    var results = formatResults(rawValues);
     _cvResults = results;
     // Draw overlay
-    drawOverlay(results, normalized, maxRaw);
+    var maxDist = 0;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].distance > maxDist) maxDist = results[i].distance;
+    }
+    drawOverlay(results, rawValues, maxDist);
     // Adequacy
     var vals = results.map(function(r) { return r.value; });
     var maxVal = Math.max.apply(null, vals);
-    results.refMax = Math.round(maxRaw * 1000) / 1000;
+    var avgDist = 0;
+    for (var i = 0; i < results.length; i++) avgDist += results[i].distance;
+    avgDist /= results.length;
+    results.refMax = Math.round(avgDist * 10) / 10;
     results.whiteRef = 0;
-    results.thresholds = {
-      score0: _cvCalNeg >= 0 ? _cvCalNeg : 0.10,
-      score1: _cvCalPos >= 0 ? (_cvCalNeg >= 0 ? (_cvCalNeg + _cvCalPos) * 0.25 : _cvCalPos * 0.25) : 0.25,
-      score2: _cvCalPos >= 0 ? _cvCalPos * 0.7 : 0.50
-    };
-    var valid = maxVal > 0 || maxRaw > 0.01;
     results.adequacy = {
-      valid: valid,
-      confidence: maxRaw > 0.05 ? 'high' : (maxRaw > 0.01 ? 'medium' : 'low'),
-      message: valid ? '' : 'No significant red signal detected. Ensure the strip has developed properly.',
+      valid: maxVal > 0 || avgDist < 100,
+      confidence: avgDist < 60 ? 'high' : (avgDist < 120 ? 'medium' : 'low'),
+      message: maxVal > 0 ? '' : 'No strong color match found. Check lighting and strip development.',
     };
     // Clean up
     warped.delete();
@@ -2130,7 +2275,7 @@ function getROIIndex(canvas, clientX, clientY) {
   }
   // Fall back to checking all pad rects from known positions
   for (var i = 0; i < _qrScanRegions.length; i++) {
-    var pr = padRectFromQR(_qrScanRegions[i]);
+    var pr = padRectFromQR(_qrScanRegions[i], i);
     if (x >= pr.x && x <= pr.x + pr.w && y >= pr.y && y <= pr.y + pr.h) return i;
   }
   return -1;
@@ -2197,7 +2342,7 @@ function captureAndAnalyze() {
   canvas.height = Math.round(vh * scale);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const results = processImageWithOpenCV(canvas);
+  const results = processImageWithOpenCV(canvas, 'camera');
   showScanResults(results);
 }
 
@@ -2229,12 +2374,12 @@ function showScanResults(results) {
       var refMax = results.refMax || 0;
       var thHtml = refMax > 0
         ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'max red=' + (refMax * 100).toFixed(1) + '%' +
-          ' &mdash; values: 1=faint | 2=medium | 3=strong' +
+          'avg distance=' + refMax.toFixed(0) +
+          ' &mdash; values: 0=neg | 1=faint | 2=moderate | 3=strong' +
           '</div>'
         : '';
       var html = warningHtml + thHtml;
-      // Show results in a 2x4 grid format
+      // Show results in a 2x4 grid format with measured RGB
       html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">';
       for (var i = 0; i < results.length; i++) {
         var r = results[i];
@@ -2243,7 +2388,10 @@ function showScanResults(results) {
         var displayName = r.name || ('L' + (Math.floor(i/2)+1) + (i%2===0?'a':'b'));
         html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;background:' + bgColors[r.value] + ';">' +
           '<span style="font-size:12px;font-weight:500;color:var(--text-secondary);">' + displayName + '</span>' +
+          '<div style="text-align:right;">' +
           '<span style="font-weight:700;font-size:15px;color:' + valColors[r.value] + ';">' + r.value + '</span>' +
+          '<span style="font-size:9px;color:var(--text-tertiary);display:block;line-height:1;">' + r.avgR + ',' + r.avgG + ',' + r.avgB + ' d:' + r.distance + '</span>' +
+          '</div>' +
           '</div>';
       }
       html += '</div>';
@@ -2270,7 +2418,7 @@ function analyzeUploadedFile(file) {
       canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const results = processImageWithOpenCV(canvas);
+      const results = processImageWithOpenCV(canvas, 'upload');
       showScanResults(results);
     };
     img.src = e.target.result;
@@ -2367,51 +2515,258 @@ document.getElementById("camFileInput").addEventListener("change", (e) => {
 function updateCalStatus() {
   var statusEl = document.getElementById("calStatus");
   if (!statusEl) return;
-  var negStr = _cvCalNeg >= 0 ? (_cvCalNeg * 100).toFixed(1) + '%' : '--';
-  var posStr = _cvCalPos >= 0 ? (_cvCalPos * 100).toFixed(1) + '%' : '--';
-  statusEl.innerHTML = 'References: <span style="color:var(--orange);">Neg: ' + negStr + '</span> &middot; <span style="color:var(--red);">Pos: ' + posStr + '</span>' +
-    (_cvCalNeg >= 0 && _cvCalPos >= 0 ? ' &middot; <span style="color:var(--green);font-weight:500;">Calibrated</span>' : '');
+  var hasCustom = false;
+  var parts = [];
+  for (var i = 0; i < 4; i++) {
+    if (_cvCalCustomRefs[i]) {
+      hasCustom = true;
+      parts.push('Val ' + i + ': rgb(' + _cvCalCustomRefs[i].r + ',' + _cvCalCustomRefs[i].g + ',' + _cvCalCustomRefs[i].b + ')');
+    }
+  }
+  statusEl.innerHTML = parts.length > 0
+    ? 'Custom refs: ' + parts.join(' &middot; ') + ' &middot; <span style="color:var(--green);font-weight:500;">Calibrated</span>'
+    : 'References: <span style="color:var(--text-tertiary);">using default RGB colors</span>';
 }
 
 function applyAndRedisplay() {
   if (!_cvStripData) return;
-  var results = mapToValues(_cvStripData);
+  var results = computeResults();
   _cvResults = results;
   window._scanResults = results;
-  var maxRaw = 0;
-  for (var i = 0; i < _cvStripData.length; i++) {
-    if (_cvStripData[i].raw > maxRaw) maxRaw = _cvStripData[i].raw;
+  var maxDist = 0;
+  for (var i = 0; i < results.length; i++) {
+    if (results[i].distance > maxDist) maxDist = results[i].distance;
   }
-  drawOverlay(results, _cvStripData, maxRaw);
-  // Re-render the results list
+  drawOverlay(results, _cvStripData, maxDist);
   showScanResults(results);
   updateCalStatus();
 }
 
-// Warped canvas click for calibration
-document.getElementById("warpedCanvas").addEventListener("click", function(e) {
+// ===== DRAGGABLE ROI + CALIBRATION on warped canvas =====
+var _warpedCanvas = document.getElementById("warpedCanvas");
+
+// Helper: compute ROI index from canvas-relative mouse position
+function getROIIndexFromXY(canvas, x, y) {
+  if (_cvStripData) {
+    for (var i = 0; i < _cvStripData.length; i++) {
+      var qr = _cvStripData[i].qrRect;
+      if (qr && x >= qr.x && x <= qr.x + qr.w && y >= qr.y && y <= qr.y + qr.h) return i;
+    }
+  }
+  for (var i = 0; i < _qrScanRegions.length; i++) {
+    var pr = padRectFromQR(_qrScanRegions[i], i);
+    if (x >= pr.x && x <= pr.x + pr.w && y >= pr.y && y <= pr.y + pr.h) return i;
+  }
+  return -1;
+}
+
+// Compute canvas-local coords from mouse/touch event
+function canvasCoords(canvas, evt) {
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var cx, cy;
+  if (evt.touches) {
+    cx = (evt.touches[0].clientX - rect.left) * scaleX;
+    cy = (evt.touches[0].clientY - rect.top) * scaleY;
+  } else {
+    cx = (evt.clientX - rect.left) * scaleX;
+    cy = (evt.clientY - rect.top) * scaleY;
+  }
+  return {x: cx, y: cy};
+}
+
+// Check if point is near the drag handle of a pad
+function getHandleIdx(canvas, x, y) {
+  for (var i = 0; i < _qrScanRegions.length; i++) {
+    var pr = padRectFromQR(_qrScanRegions[i], i);
+    var hOff = Math.floor(_cvHandleSize * 0.4);
+    var hx = pr.x - hOff, hy = pr.y - hOff;
+    if (x >= hx && x <= hx + _cvHandleSize && y >= hy && y <= hy + _cvHandleSize) return i;
+  }
+  return -1;
+}
+
+// Re-measure a single pad at its current position and update _cvStripData
+function remeasurePad(idx, warpedMat) {
+  if (!_cvStripData || idx < 0 || idx >= _cvStripData.length) return;
+  var effRefs = _cvRefColors.slice();
+  for (var ri = 0; ri < 4; ri++) {
+    if (_cvCalCustomRefs[ri]) effRefs[ri] = _cvCalCustomRefs[ri];
+  }
+  var region = _qrScanRegions[idx];
+  var padR = padRectFromQR(region, idx);
+  var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
+  var roi = warpedMat.roi(rect);
+  var padResult = measurePadValue(roi, effRefs);
+  // Save raw pixel data for recalibration
+  var rgb3 = new cv.Mat();
+  cv.cvtColor(roi, rgb3, cv.COLOR_RGBA2RGB);
+  if (!_cvStripRawPixels) _cvStripRawPixels = [];
+  _cvStripRawPixels[idx] = { data: new Uint8Array(rgb3.data), w: rgb3.cols, h: rgb3.rows };
+  rgb3.delete();
+  var padIdx = getPadIdxFromQRText(region.name);
+  _cvStripData[idx] = {
+    name: region.padName,
+    marker: region.marker,
+    value: padResult.value,
+    avgR: padResult.avgR,
+    avgG: padResult.avgG,
+    avgB: padResult.avgB,
+    counts: padResult.counts,
+    row: Math.floor(padIdx / _cvCols),
+    col: padIdx % _cvCols,
+    qrRect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h }
+  };
+}
+
+// Redraw after drag or calibration
+function recalcAndRedraw() {
+  if (!_cvStripData) return;
+  var results = computeResults();
+  _cvResults = results;
+  window._scanResults = results;
+  var maxDist = 0;
+  for (var i = 0; i < results.length; i++) {
+    if (results[i].distance > maxDist) maxDist = results[i].distance;
+  }
+  drawOverlay(results, _cvStripData, maxDist);
+  showScanResults(results);
+  updateCalStatus();
+}
+
+// --- Mousedown: start calibration click or pad drag ---
+_warpedCanvas.addEventListener("mousedown", function(e) {
+  var c = canvasCoords(this, e);
+  // Check if user grabbed a drag handle
+  var hIdx = getHandleIdx(this, c.x, c.y);
+  if (hIdx >= 0) {
+    _dragState = {
+      idx: hIdx,
+      startMouseX: e.clientX,
+      startMouseY: e.clientY,
+      origDx: _cvPadOffsets[hIdx].dx,
+      origDy: _cvPadOffsets[hIdx].dy
+    };
+    e.preventDefault();
+    return;
+  }
+  // Check if calibration mode is active — handle click
   if (!_cvCalMode || !_cvStripData) return;
-  var idx = getROIIndex(this, e.clientX, e.clientY);
+  var idx = getROIIndexFromXY(this, c.x, c.y);
   if (idx < 0 || idx >= _cvStripData.length) return;
   if (_cvCalMode === 'neg') {
-    _cvCalNeg = _cvStripData[idx].normalized;
-    _cvCalPadNeg = idx;
+    _cvCalCustomRefs[0] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
   } else if (_cvCalMode === 'pos') {
-    _cvCalPos = _cvStripData[idx].normalized;
-    _cvCalPadPos = idx;
+    _cvCalCustomRefs[3] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
   }
   _cvCalMode = null;
   document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
   document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  applyAndRedisplay();
+  recalcAndRedraw();
 });
 
+// --- Mousemove: update pad offset while dragging ---
+document.addEventListener("mousemove", function(e) {
+  if (!_dragState) return;
+  var dx = _dragState.origDx + (e.clientX - _dragState.startMouseX);
+  var dy = _dragState.origDy + (e.clientY - _dragState.startMouseY);
+  _cvPadOffsets[_dragState.idx].dx = dx;
+  _cvPadOffsets[_dragState.idx].dy = dy;
+  // Quick redraw overlay without full measurement during drag
+  if (_cvResults) {
+    var maxDist = 0;
+    for (var i = 0; i < _cvResults.length; i++) {
+      if (_cvResults[i].distance > maxDist) maxDist = _cvResults[i].distance;
+    }
+    drawOverlay(_cvResults, _cvStripData, maxDist);
+  }
+});
+
+// --- Mouseup: end drag, remeasure pads ---
+document.addEventListener("mouseup", function(e) {
+  if (!_dragState) return;
+  var idx = _dragState.idx;
+  _dragState = null;
+  // If offset is still zero, nothing moved
+  if (_cvPadOffsets[idx].dx === 0 && _cvPadOffsets[idx].dy === 0) return;
+  // Remeasure the dragged pad using the warped canvas pixel data
+  var wCanvas = document.getElementById('warpedCanvas');
+  // Restore clean warped image so overlay graphics don't corrupt pixel measurement
+  var wctx = wCanvas.getContext('2d');
+  if (window._warpedBaseImg) wctx.putImageData(window._warpedBaseImg, 0, 0);
+  var warpSrc = cv.imread(wCanvas);
+  remeasurePad(idx, warpSrc);
+  warpSrc.delete();
+  recalcAndRedraw();
+});
+
+// --- Touch equivalents ---
+_warpedCanvas.addEventListener("touchstart", function(e) {
+  if (e.touches.length !== 1) return;
+  var c = canvasCoords(this, e);
+  var hIdx = getHandleIdx(this, c.x, c.y);
+  if (hIdx >= 0) {
+    _dragState = {
+      idx: hIdx,
+      startMouseX: e.touches[0].clientX,
+      startMouseY: e.touches[0].clientY,
+      origDx: _cvPadOffsets[hIdx].dx,
+      origDy: _cvPadOffsets[hIdx].dy
+    };
+    e.preventDefault();
+    return;
+  }
+  if (!_cvCalMode || !_cvStripData) return;
+  var idx = getROIIndexFromXY(this, c.x, c.y);
+  if (idx < 0 || idx >= _cvStripData.length) return;
+  if (_cvCalMode === 'neg') {
+    _cvCalCustomRefs[0] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
+  } else if (_cvCalMode === 'pos') {
+    _cvCalCustomRefs[3] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
+  }
+  _cvCalMode = null;
+  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
+  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
+  recalcAndRedraw();
+}, {passive: false});
+
+document.addEventListener("touchmove", function(e) {
+  if (!_dragState || e.touches.length !== 1) return;
+  var dx = _dragState.origDx + (e.touches[0].clientX - _dragState.startMouseX);
+  var dy = _dragState.origDy + (e.touches[0].clientY - _dragState.startMouseY);
+  _cvPadOffsets[_dragState.idx].dx = dx;
+  _cvPadOffsets[_dragState.idx].dy = dy;
+  if (_cvResults) {
+    var maxDist = 0;
+    for (var i = 0; i < _cvResults.length; i++) {
+      if (_cvResults[i].distance > maxDist) maxDist = _cvResults[i].distance;
+    }
+    drawOverlay(_cvResults, _cvStripData, maxDist);
+  }
+});
+
+document.addEventListener("touchend", function(e) {
+  if (!_dragState) return;
+  var idx = _dragState.idx;
+  _dragState = null;
+  if (_cvPadOffsets[idx].dx === 0 && _cvPadOffsets[idx].dy === 0) return;
+  var wCanvas = document.getElementById('warpedCanvas');
+  // Restore clean warped image so overlay graphics don't corrupt pixel measurement
+  var wctx = wCanvas.getContext('2d');
+  if (window._warpedBaseImg) wctx.putImageData(window._warpedBaseImg, 0, 0);
+  var warpSrc = cv.imread(wCanvas);
+  remeasurePad(idx, warpSrc);
+  warpSrc.delete();
+  recalcAndRedraw();
+});
+
+// --- Calibration buttons ---
 document.getElementById("calNegBtn").addEventListener("click", function() {
   if (!_cvStripData) return;
   _cvCalMode = (_cvCalMode === 'neg') ? null : 'neg';
   this.style.borderColor = _cvCalMode === 'neg' ? 'var(--orange)' : 'var(--card-border)';
   document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  if (!_cvCalMode && !_cvCalPos) _cvCalMode = 'neg'; // auto-select if no mode
 });
 
 document.getElementById("calPosBtn").addEventListener("click", function() {
@@ -2422,14 +2777,11 @@ document.getElementById("calPosBtn").addEventListener("click", function() {
 });
 
 document.getElementById("calResetBtn").addEventListener("click", function() {
-  _cvCalNeg = -1;
-  _cvCalPos = -1;
-  _cvCalPadNeg = -1;
-  _cvCalPadPos = -1;
+  for (var i = 0; i < 4; i++) _cvCalCustomRefs[i] = null;
   _cvCalMode = null;
   document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
   document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  if (_cvStripData) applyAndRedisplay();
+  if (_cvStripData) recalcAndRedraw();
   updateCalStatus();
 });
 </script>
