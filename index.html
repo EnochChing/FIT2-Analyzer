@@ -4,6 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>FIT 2.0 AI Analyser</title>
+<script>
+  var cvReady = false;
+  var openCvFailed = false;
+  function onOpenCvReady() {
+    if (typeof cv !== 'undefined') {
+      cv['onRuntimeInitialized'] = function() {
+        cvReady = true;
+      };
+    }
+  }
+  function onOpenCvError() {
+    openCvFailed = true;
+    console.error('Failed to load OpenCV.js');
+  }
+</script>
+<script async src="https://docs.opencv.org/4.9.0/opencv.js" onload="onOpenCvReady()" onerror="onOpenCvError()"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -612,7 +629,7 @@
   <div class="bmi-overlay" id="cameraOverlay">
     <div class="bmi-modal" style="max-width:380px;">
       <h3 id="camTitle">Scan Test Strip</h3>
-      <div class="bmi-sub" id="camSub">Position the test strip window within the guide and tap Capture.</div>
+      <div class="bmi-sub" id="camSub">Position the strip so QR codes are on the <strong>right side</strong> with the 8 blue dots. Keep the strip upright in the dashed frame.</div>
       <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;">
         <video id="camVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
         <div id="camPlaceholder" style="color:#888;font-size:14px;text-align:center;padding:20px;">
@@ -621,8 +638,37 @@
         </div>
         <!-- ROI Guide Overlay -->
         <div id="camGuide" style="position:absolute;inset:0;display:none;pointer-events:none;">
-          <div style="position:absolute;left:10%;right:10%;top:15%;bottom:20%;border:2px dashed rgba(255,255,255,0.6);border-radius:10px;box-shadow:0 0 0 999px rgba(0,0,0,0.3);"></div>
-          <div style="position:absolute;top:8%;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;" id="camGuideLabel">Position test strip in the frame</div>
+          <!-- Dimmed background with cutout for the strip -->
+          <div style="position:absolute;inset:0;background:rgba(0,0,0,0.3);"></div>
+          <!-- Strip rectangle (13:18.5 aspect ratio = 0.703:1) -->
+          <div style="position:absolute;left:22%;right:22%;top:10%;bottom:10%;border:2.5px solid rgba(255,255,255,0.7);border-radius:8px;background:rgba(255,255,255,0.02);box-shadow:0 0 0 0 rgba(255,255,255,0.1);">
+            <!-- Pad zone left of each QR column (4 columns) -->
+            <div style="position:absolute;left:1%;right:73%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
+            <div style="position:absolute;left:28%;right:46%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
+            <div style="position:absolute;left:49%;right:21%;top:1%;bottom:1%;border-right:1px dashed rgba(255,255,255,0.15);"></div>
+            <!-- QR zone (right ~27% of strip) -->
+            <div style="position:absolute;left:73%;right:0;top:0;bottom:0;border-left:1.5px solid rgba(0,200,255,0.4);background:rgba(0,200,255,0.06);border-radius:0 6px 6px 0;"></div>
+            <!-- QR label -->
+            <div style="position:absolute;left:75%;top:4%;font-size:9px;color:rgba(0,200,255,0.6);font-weight:500;letter-spacing:1px;">QR</div>
+            <!-- Pad label -->
+            <div style="position:absolute;left:4%;top:4%;font-size:9px;color:rgba(255,255,255,0.3);font-weight:400;">PADS</div>
+            <!-- Row labels -->
+            <div style="position:absolute;left:1%;top:47%;font-size:8px;color:rgba(255,255,255,0.25);">B</div>
+            <div style="position:absolute;left:1%;top:55%;font-size:8px;color:rgba(255,255,255,0.25);">A</div>
+          </div>
+          <!-- 8 QR code markers (2 rows x 4 columns, positioned at exact fractions) -->
+          <!-- Row B (top row of QR codes, at y=54.1% of strip) -->
+          <div style="position:absolute;left:27%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:38%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:50%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:63%;top:53%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <!-- Row A (bottom row of QR codes, at y=63.8% of strip) -->
+          <div style="position:absolute;left:27%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:38%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:50%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <div style="position:absolute;left:63%;top:61%;width:8px;height:8px;margin-left:-4px;margin-top:-4px;border-radius:50%;background:rgba(0,200,255,0.85);border:1.5px solid #fff;box-shadow:0 0 6px rgba(0,200,255,0.5);"></div>
+          <!-- Instruction text -->
+          <div style="position:absolute;bottom:4%;left:0;right:0;text-align:center;font-size:12px;color:rgba(255,255,255,0.9);font-weight:500;text-shadow:0 1px 4px rgba(0,0,0,0.5);" id="camGuideLabel">Align the 8 QR codes with the blue dots &middot; Fit strip in the rectangle</div>
         </div>
       </div>
       <!-- Results after capture -->
@@ -636,6 +682,27 @@
         <div id="camNotDetected" style="display:none;background:rgba(214,79,74,0.08);border-radius:10px;padding:12px;margin-bottom:12px;text-align:center;">
           <p style="font-size:14px;font-weight:600;color:#b83a36;" id="camResultText">No test lines detected.</p>
           <p style="font-size:13px;color:var(--text-secondary);margin-top:4px;" id="camResultSub">Try aligning the strip more carefully or adjust lighting.</p>
+        </div>
+
+        <!-- Warped strip display -->
+        <div id="camWarpSection" style="display:none;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px;">Normalized Strip with Detected Pads:</div>
+          <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
+            <canvas id="warpedCanvas" width="800" height="300" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
+          </div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Click a pad to set calibration reference</div>
+        </div>
+
+        <!-- Calibration UI -->
+        <div id="camCalSection" style="display:none;background:rgba(59,130,196,0.04);border-radius:10px;padding:10px;margin-bottom:8px;">
+          <div style="font-size:12px;font-weight:600;color:var(--accent-dim);margin-bottom:4px;">Calibration</div>
+          <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">Click a reference button, then click the corresponding pad on the strip image above.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
+            <button class="btn-cal" id="calNegBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Negative</button>
+            <button class="btn-cal" id="calPosBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Positive</button>
+            <button class="btn-cal" id="calResetBtn" style="flex:0;min-width:50px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Reset</button>
+          </div>
+          <div id="calStatus" style="font-size:11px;color:var(--text-tertiary);line-height:1.4;">References: <span style="color:var(--orange);">Neg: --</span> &middot; <span style="color:var(--red);">Pos: --</span></div>
         </div>
       </div>
       <div class="btn-row" id="camBtnRow">
@@ -827,7 +894,7 @@ const langT = {
     medDisc: "Medical Disclaimer:", medDiscText: "This tool is for screening support only and does not diagnose colorectal cancer. Users with concerning results or symptoms should seek professional medical evaluation.",
     noResults: "No results yet. Go to Scan to begin.", latestResult: "Latest Result",
     tabHome: "Home", tabScan: "Scan", tabResults: "Results", tabInsights: "Insights", tabProfile: "Profile", tabHistory: "History",
-    scanTitle: "Scan", stripTitle: "Strip Markers", stripDesc: "Enter each marker value (0–3) from the assay strip.", calcRisk: "Calculate Risk", scanStrip: "Scan Strip", camTitle: "Scan Test Strip", camSub: "Position the test strip window within the guide and tap Capture.", camLoading: "Camera loading...", camNotDetected: "No test lines detected.", camNotDetectedSub: "Try aligning the strip more carefully or adjust lighting.", camCapture: "Capture", camClose: "Close Camera", camGuide: "Align strip window here", camDetectedTitle: "Detected Values", camDetectedNote: "Review detected values before accepting.", camAccept: "Use Detected Values", camRetake: "Retake", camUpload: "Upload Photo",
+    scanTitle: "Scan", stripTitle: "Strip Markers", stripDesc: "Enter each marker value (0–3) from the assay strip.", calcRisk: "Calculate Risk", scanStrip: "Scan Strip", camTitle: "Scan Test Strip", camSub: "Hold the strip upright. Align the 8 QR codes (right side) with the blue dots. Keep the strip inside the dashed frame.", camLoading: "Camera loading...", camNotDetected: "No test lines detected.", camNotDetectedSub: "Try aligning the strip more carefully or adjust lighting.", camCapture: "Capture", camClose: "Close Camera", camGuide: "Align strip window here", camDetectedTitle: "Detected Values", camDetectedNote: "Review detected values before accepting.", camAccept: "Use Detected Values", camRetake: "Retake", camUpload: "Upload Photo",
     resultsTitle: "Results", riskAssess: "Risk assessment",
     invalid: "Invalid", status: "Status", result_: "Result", reason: "Reason", adequacy: "Adequacy",
     compScores: "Composite Scores", testScore70: "Test Score (70%)", userScore30: "User Score (30%)", combinedScore: "Combined Score",
@@ -1052,6 +1119,89 @@ let currentProfile = loadProfile();
 let currentBands = { ...defaultBands };
 let lastResult = null;
 let viewerIndex = null; // history viewer
+
+// ===== OPENCV STATE =====
+let _cvStripData = null;      // raw measurement data for each pad
+let _cvCalNeg = -1;           // normalized redness of negative ref pad
+let _cvCalPos = -1;           // normalized redness of positive ref pad
+let _cvCalPadNeg = -1;        // index of negative ref pad
+let _cvCalPadPos = -1;        // index of positive ref pad
+let _cvCalMode = null;        // 'neg' or 'pos' when awaiting click
+let _cvResults = null;        // last scan results
+let _warpWidth = 800, _warpHeight = 300;
+let _cvRows = 2, _cvCols = 4;
+let _cvPadNames = [
+  'Line1a','Line2a','Line3a','Line4a',
+  'Line1b','Line2b','Line3b','Line4b'
+];
+let _cvPadMarkers = [
+  'L1a','L2a','L3a','L4a',
+  'L1b','L2b','L3b','L4b'
+];
+
+// QR code positions in warped 800x300 image, from physical strip measurements
+// Strip: 13 cm wide x 18.5 cm tall. Origin top-right corner.
+// 1 cm = 800/13 = 61.5 px (X), 300/18.5 = 16.2 px (Y)
+// QR is 1 cm to the RIGHT of each pad
+var _qrScanRegions = [
+  { name: '1A', cx: 585, cy: 191, padName: 'Line1a', marker: 'L1a' },
+  { name: '1B', cx: 585, cy: 162, padName: 'Line1b', marker: 'L1b' },
+  { name: '2A', cx: 406, cy: 191, padName: 'Line2a', marker: 'L2a' },
+  { name: '2B', cx: 406, cy: 162, padName: 'Line2b', marker: 'L2b' },
+  { name: '3A', cx: 234, cy: 191, padName: 'Line3a', marker: 'L3a' },
+  { name: '3B', cx: 234, cy: 162, padName: 'Line3b', marker: 'L3b' },
+  { name: '4A', cx: 74,  cy: 191, padName: 'Line4a', marker: 'L4a' },
+  { name: '4B', cx: 74,  cy: 162, padName: 'Line4b', marker: 'L4b' }
+];
+
+// Compute pad measurement rect from known QR position (pad is 1 cm left of QR)
+function padRectFromQR(qrRegion) {
+  var padLeft = Math.max(0, qrRegion.cx - 155);
+  var padTop  = Math.max(0, qrRegion.cy - 50);
+  return {
+    x: padLeft,
+    y: padTop,
+    w: Math.min(95, qrRegion.cx - padLeft - 10),
+    h: Math.min(90, _warpHeight - padTop)
+  };
+}
+
+// Map QR text (e.g., "1A") to pad index in _cvPadNames (e.g., "1A") to pad index in _cvPadNames
+function getPadIdxFromQRText(text) {
+  var s = text.trim().toUpperCase();
+  if (s.length < 2) return -1;
+  var col = parseInt(s.charAt(0)) - 1;
+  var row = s.charAt(1) === 'B' ? 1 : 0;
+  if (col >= 0 && col < 4) return row * 4 + col;
+  return -1;
+}
+
+// OpenCV timeout guard
+setTimeout(function() {
+  if (!cvReady) openCvFailed = true;
+}, 30000);
+
+function getEmptyResults(msg) {
+  var arr = [];
+  for (var i = 0; i < 8; i++) {
+    arr.push({
+      name: _cvPadNames[i],
+      markers: [_cvPadMarkers[i]],
+      raw: 0,
+      normalized: 0,
+      value: 0,
+      redness: 0,
+      corrected: 0,
+      bg: 0,
+      whiteRef: 0,
+    });
+  }
+  arr.adequacy = { valid: false, confidence: 'low', message: msg || 'Processing failed.' };
+  arr.refMax = 0;
+  arr.whiteRef = 0;
+  arr.thresholds = { score0: 0, score1: 1, score2: 2 };
+  return arr;
+}
 
 // ===== LOCAL STORAGE =====
 function loadProfile() {
@@ -1541,327 +1691,446 @@ const camStream = { current: null };
 // 1 = faint pink/red line (1-35% of max)
 // 2 = moderate red line (36-70% of max)
 // 3 = darkest strong red line (71-100% of max)
-function classifyRelative(redness, refMax) {
-  if (refMax < 2 || redness < 1) return 0;
-  const pct = redness / refMax;
-  if (pct < 0.01) return 0;
-  if (pct < 0.36) return 1;
-  if (pct < 0.71) return 2;
-  return 3;
+
+// ===== OPENCV.js SCANNING PIPELINE ===============================================
+
+// Order 4 corners from minAreaRect as TL, TR, BR, BL
+function orderPoints(pts) {
+  pts.sort(function(a, b) { return a.y - b.y; });
+  var top = pts.slice(0, 2).sort(function(a, b) { return a.x - b.x; });
+  var bottom = pts.slice(2, 4).sort(function(a, b) { return a.x - b.x; });
+  var ordered = cv.matFromArray(4, 1, cv.CV_32FC2, [
+    top[0].x, top[0].y,
+    top[1].x, top[1].y,
+    bottom[1].x, bottom[1].y,
+    bottom[0].x, bottom[0].y
+  ]);
+  return ordered;
 }
 
-
-// ── Profile helpers ──────────────────────────────────────────────────────────
-
-function extractProfile(imgData, w, h, y1, y2) {
-  // Extract 1D redness profile (R - max(G,B)) averaged across central 60% width
-  const xLo = Math.round(w * 0.20), xHi = Math.round(w * 0.80);
-  const profile = [];
-  for (let y = y1; y < y2; y += 2) {
-    let rS = 0, gS = 0, bS = 0, n = 0;
-    for (let x = xLo; x < xHi; x += 2) {
-      const i = (y * w + x) * 4;
-      rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
+// Try to find the largest roughly-rectangular contour from a binary mask
+function findLargestRectContour(mask, imgArea, minAreaFrac) {
+  minAreaFrac = minAreaFrac || 0.003;
+  var contours = new cv.MatVector();
+  var hierarchy = new cv.Mat();
+  cv.findContours(mask, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  hierarchy.delete();
+  var bestIdx = -1, bestArea = 0;
+  for (var i = 0; i < contours.size(); i++) {
+    var area = cv.contourArea(contours.get(i));
+    if (area > bestArea && area > imgArea * minAreaFrac) {
+      bestArea = area;
+      bestIdx = i;
     }
-    if (n === 0) continue;
-    const redness = (rS / n) - Math.max(gS / n, bS / n);
-    profile.push({ y, redness });
   }
-  return profile;
+  if (bestIdx < 0) { contours.delete(); return null; }
+  var cnt = contours.get(bestIdx);
+  var rect = cv.minAreaRect(cnt);
+  var rawPts = rect.points();
+  var boxPts = [];
+  for (var pi = 0; pi < 4; pi++) {
+    boxPts.push({ x: rawPts[pi].x, y: rawPts[pi].y });
+  }
+  contours.delete();
+  return orderPoints(boxPts);
 }
 
-function smoothProfile(profile, window) {
-  // Centered moving average
-  const half = Math.floor(window / 2);
-  const result = new Array(profile.length);
-  for (let i = 0; i < profile.length; i++) {
-    let sum = 0, count = 0;
-    for (let j = Math.max(0, i - half); j < Math.min(profile.length, i + half + 1); j++) {
-      sum += profile[j].redness; count++;
-    }
-    result[i] = { y: profile[i].y, redness: count > 0 ? sum / count : 0 };
-  }
+// Method 1: Canny edge detection — good when strip edges contrast with background
+function findStripCornersCanny(src) {
+  var gray = new cv.Mat();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  // CLAHE for better edge contrast in uneven lighting
+  var clahe = new cv.CLAHE(2.0, new cv.Size(8, 8));
+  var enhanced = new cv.Mat();
+  clahe.apply(gray, enhanced);
+  clahe.delete();
+  var blurred = new cv.Mat();
+  cv.GaussianBlur(enhanced, blurred, new cv.Size(5, 5), 0);
+  var edges = new cv.Mat();
+  cv.Canny(blurred, edges, 20, 60);
+  var kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(5, 5));
+  var dilated = new cv.Mat();
+  cv.dilate(edges, dilated, kernel);
+  var imgArea = src.rows * src.cols;
+  var result = findLargestRectContour(dilated, imgArea, 0.003);
+  gray.delete(); enhanced.delete(); blurred.delete(); edges.delete();
+  kernel.delete(); dilated.delete();
   return result;
 }
 
-function findProfilePeaks(profile, minHeight, minDistance) {
-  // Find local maxima in the profile above minHeight, separated by minDistance
-  const peaks = [];
-  for (let i = 1; i < profile.length - 1; i++) {
-    const prev = profile[i - 1].redness;
-    const curr = profile[i].redness;
-    const next = profile[i + 1].redness;
-    if (curr > prev && curr >= next && curr >= minHeight) {
-      // Check distance from last accepted peak
-      if (peaks.length === 0 || (profile[i].y - peaks[peaks.length - 1].y) >= minDistance) {
-        peaks.push({ y: profile[i].y, redness: curr, idx: i });
-      } else if (curr > peaks[peaks.length - 1].redness) {
-        // Replace last peak if this one is taller
-        peaks[peaks.length - 1] = { y: profile[i].y, redness: curr, idx: i };
-      }
-    }
+// Method 2: Otsu threshold — works when the strip is a different brightness than background
+function findStripCornersOtsu(src) {
+  var gray = new cv.Mat();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  var blurred = new cv.Mat();
+  cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+  var thresh = new cv.Mat();
+  cv.threshold(blurred, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+  // Check if the white region covers most of the image (strip is bright), and invert if needed
+  var whitePx = cv.countNonZero(thresh);
+  var total = src.rows * src.cols;
+  if (whitePx > total * 0.6) {
+    // Strip is likely the dark region — invert
+    cv.bitwise_not(thresh, thresh);
   }
-  return peaks;
+  var kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(11, 11));
+  var closed = new cv.Mat();
+  cv.morphologyEx(thresh, closed, cv.MORPH_CLOSE, kernel);
+  var imgArea = src.rows * src.cols;
+  var result = findLargestRectContour(closed, imgArea, 0.003);
+  gray.delete(); blurred.delete(); thresh.delete(); kernel.delete(); closed.delete();
+  return result;
 }
 
-function measureRednessAtRow(imgData, w, y) {
-  let rS = 0, gS = 0, bS = 0, n = 0;
-  const xLo = Math.round(w * 0.18), xHi = Math.round(w * 0.82);
-  for (let x = xLo; x < xHi; x += 2) {
-    const i = (y * w + x) * 4;
-    rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
-  }
-  const rA = rS / n, gA = gS / n, bA = bS / n;
-  return { redness: rA - Math.max(gA, bA), brightness: (rA + gA + bA) / 3 };
+// Method 3: Adaptive threshold fallback
+function findStripCornersAdaptive(src) {
+  var gray = new cv.Mat();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  var blurred = new cv.Mat();
+  cv.GaussianBlur(gray, blurred, new cv.Size(5, 5), 0);
+  var thresh = new cv.Mat();
+  cv.adaptiveThreshold(blurred, thresh, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 31, 3);
+  var kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(11, 11));
+  var closed = new cv.Mat();
+  cv.morphologyEx(thresh, closed, cv.MORPH_CLOSE, kernel);
+  var imgArea = src.rows * src.cols;
+  var result = findLargestRectContour(closed, imgArea, 0.003);
+  gray.delete(); blurred.delete(); thresh.delete(); kernel.delete(); closed.delete();
+  return result;
 }
 
-function measureLocalBg(imgData, w, y1, y2) {
-  // Average redness in a background region
-  if (y2 <= y1) return 0;
-  let sum = 0, n = 0;
-  for (let y = y1; y < y2; y += 2) {
-    const m = measureRednessAtRow(imgData, w, y);
-    sum += m.redness; n++;
+// Fallback: find strip by dark content (QR codes) when edges are invisible on white backgrounds
+function findStripCornersByDarkContent(src) {
+  var gray = new cv.Mat();
+  cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+  var dark = new cv.Mat();
+  cv.threshold(gray, dark, 70, 255, cv.THRESH_BINARY_INV);
+  // Kernel scales with image size (approx 1/50th of min dimension)
+  var kSize = Math.max(9, Math.round(Math.min(src.rows, src.cols) / 50));
+  if (kSize % 2 === 0) kSize++;
+  var kernel = cv.getStructuringElement(cv.MORPH_RECT, new cv.Size(kSize, kSize));
+  var closed = new cv.Mat();
+  cv.morphologyEx(dark, closed, cv.MORPH_CLOSE, kernel);
+  var contours = new cv.MatVector();
+  var hierarchy = new cv.Mat();
+  cv.findContours(closed, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+  var imgArea = src.rows * src.cols;
+  var minArea = imgArea * 0.003;
+  var bestIdx = -1, bestArea = 0, bestRect = null;
+  for (var i = 0; i < contours.size(); i++) {
+    var area = cv.contourArea(contours.get(i));
+    if (area < minArea || area < bestArea) continue;
+    var rect = cv.boundingRect(contours.get(i));
+    if (rect.x <= 5 || rect.y <= 5 || rect.x + rect.width >= src.cols - 5 || rect.y + rect.height >= src.rows - 5) continue;
+    bestArea = area;
+    bestIdx = i;
+    bestRect = { x: rect.x, y: rect.y, w: rect.width, h: rect.height };
   }
-  return n > 0 ? sum / n : 0;
+  gray.delete(); dark.delete(); kernel.delete(); closed.delete(); hierarchy.delete();
+  if (bestIdx < 0) { contours.delete(); return null; }
+  // Expand to include the pad area (pads are to the left of QR codes)
+  var expL = Math.round(bestRect.w * 1.2);
+  var expR = Math.round(bestRect.w * 0.85);
+  var expT = Math.round(bestRect.h * 1.0);
+  var expB = Math.round(bestRect.h * 0.4);
+  var sx = Math.max(0, bestRect.x - expL);
+  var sy = Math.max(0, bestRect.y - expT);
+  var sw = Math.min(src.cols - sx, bestRect.w + expL + expR);
+  var sh = Math.min(src.rows - sy, bestRect.h + expT + expB);
+  var pts = [{x:sx, y:sy}, {x:sx+sw, y:sy}, {x:sx+sw, y:sy+sh}, {x:sx, y:sy+sh}];
+  contours.delete();
+  return orderPoints(pts);
 }
 
-function measurePeakSignal(imgData, w, profile, peakIdx, yMin, yMax, halfHeight, bgGap, whiteRef) {
-  // Measure peak redness above local background, with white reference as floor
-  const peakY = profile[peakIdx].y;
-  const searchY1 = Math.max(yMin, peakY - halfHeight);
-  const searchY2 = Math.min(yMax, peakY + halfHeight);
-
-  // Background: regions above and below search zone, with a gap
-  const bgY1 = Math.max(yMin, searchY1 - bgGap - halfHeight);
-  const bgY2 = Math.max(yMin, searchY1 - bgGap);
-  const bgY3 = Math.min(yMax, searchY2 + bgGap);
-  const bgY4 = Math.min(yMax, searchY2 + bgGap + halfHeight);
-
-  let bgSum = 0, bgN = 0;
-  for (const [by1, by2] of [[bgY1, bgY2], [bgY3, bgY4]]) {
-    if (by2 > by1 + 2) {
-      for (let y = by1; y < by2; y += 2) {
-        const m = measureRednessAtRow(imgData, w, y);
-        bgSum += m.redness; bgN++;
-      }
-    }
-  }
-  const localBg = bgN > 0 ? bgSum / bgN : 0;
-  // Effective background = max of local background and white reference
-  const effBg = Math.max(localBg, whiteRef || 0);
-
-  // Find max redness above effective background in search zone
-  let bestRaw = -999, bestAboveBg = -999;
-  for (let y = searchY1; y < searchY2; y += 2) {
-    const m = measureRednessAtRow(imgData, w, y);
-    if (m.redness > bestRaw) {
-      bestRaw = m.redness;
-      bestAboveBg = m.redness - effBg;
-    }
-  }
-
-  return {
-    raw: bestRaw > -999 ? bestRaw : 0,
-    corrected: Math.max(0, bestAboveBg),
-    bg: Math.round(localBg * 10) / 10,
-    whiteRef: Math.round((whiteRef || 0) * 10) / 10,
-  };
+// Main strip detection — tries multiple methods
+function findStripCorners(src) {
+  var corners = findStripCornersCanny(src);
+  if (corners) { console.log('Strip found via Canny'); return corners; }
+  corners = findStripCornersOtsu(src);
+  if (corners) { console.log('Strip found via Otsu'); return corners; }
+  corners = findStripCornersAdaptive(src);
+  if (corners) { console.log('Strip found via Adaptive'); return corners; }
+  corners = findStripCornersByDarkContent(src);
+  if (corners) { console.log('Strip found via Dark Content'); return corners; }
+  return null;
 }
 
-// ── Main Scanner ─────────────────────────────────────────────────────────────
+// Perspective warp
+function warpStrip(src, corners, dstW, dstH) {
+  var dstPts = cv.matFromArray(4, 1, cv.CV_32FC2, [0, 0, dstW, 0, dstW, dstH, 0, dstH]);
+  var M = cv.getPerspectiveTransform(corners, dstPts);
+  var warped = new cv.Mat();
+  cv.warpPerspective(src, warped, M, new cv.Size(dstW, dstH));
+  dstPts.delete(); M.delete();
+  corners.delete();
+  return warped;
+}
 
-function scanImage(imgData, w, h) {
-  // Step 1: Find the strip window
-  let bestStart, bestEnd;
+// Measure redness of an ROI using HSV
+function measureROIRedness(roiRgba) {
+  var rgb = new cv.Mat();
+  cv.cvtColor(roiRgba, rgb, cv.COLOR_RGBA2RGB);
+  var hsv = new cv.Mat();
+  cv.cvtColor(rgb, hsv, cv.COLOR_RGB2HSV);
+  // Note: roiRgba is a reference from .roi(), don't delete it — parent Mat owns data
+  // Split channels
+  var channels = new cv.MatVector();
+  cv.split(hsv, channels);
+  var h = channels.get(0);
+  var s = channels.get(1);
+  var v = channels.get(2);
+  // H <= 10
+  var maskHL = new cv.Mat();
+  cv.threshold(h, maskHL, 10, 255, cv.THRESH_BINARY_INV);
+  // H >= 160
+  var maskHH = new cv.Mat();
+  cv.threshold(h, maskHH, 160, 255, cv.THRESH_BINARY);
+  // S > 50
+  var maskS = new cv.Mat();
+  cv.threshold(s, maskS, 50, 255, cv.THRESH_BINARY);
+  // Combine: (Hlow OR Hhigh) AND S
+  var maskH = new cv.Mat();
+  cv.bitwise_or(maskHL, maskHH, maskH);
+  var mask = new cv.Mat();
+  cv.bitwise_and(maskH, maskS, mask);
+  var redPixels = cv.countNonZero(mask);
+  var total = roiRgba.rows * roiRgba.cols;
+  if (redPixels < 5) {
+    channels.delete(); hsv.delete(); rgb.delete();
+    maskHL.delete(); maskHH.delete(); maskS.delete(); maskH.delete(); mask.delete();
+    return 0;
+  }
+  var meanV = cv.mean(v, mask);
+  channels.delete(); hsv.delete(); rgb.delete();
+  maskHL.delete(); maskHH.delete(); maskS.delete(); maskH.delete(); mask.delete();
+  return (redPixels / total) * (meanV[0] / 255);
+}
 
-  if (h < 400) {
-    bestStart = 0;
-    bestEnd = h;
-  } else {
-    const profile = [];
-    for (let y = 0; y < h; y += 2) {
-      let rS = 0, gS = 0, bS = 0, n = 0;
-      const xLo = Math.round(w * 0.15), xHi = Math.round(w * 0.85);
-      for (let x = xLo; x < xHi; x += 3) {
-        const i = (y * w + x) * 4;
-        rS += imgData[i]; gS += imgData[i + 1]; bS += imgData[i + 2]; n++;
-      }
-      profile.push({ y, bright: (rS / n + gS / n + bS / n) / 3 });
-    }
+// Map normalized values to 0-3 using calibration thresholds
+function mapToValues(normalizedArr) {
+  var negThresh = (_cvCalNeg >= 0) ? _cvCalNeg : (_cvCalPos >= 0 ? _cvCalPos * 0.08 : 0.10);
+  var posThresh = (_cvCalPos >= 0) ? _cvCalPos : (_cvCalNeg >= 0 ? _cvCalNeg + 0.3 : 0.66);
+  if (posThresh <= negThresh) posThresh = negThresh + 0.2;
+  var range = posThresh - negThresh;
+  var t1 = negThresh + range * 0.25;
+  var t2 = negThresh + range * 0.60;
+  return normalizedArr.map(function(item) {
+    var n = item.normalized;
+    var v;
+    if (n <= negThresh) v = 0;
+    else if (n <= t1) v = 1;
+    else if (n <= t2) v = 2;
+    else v = 3;
+    return {
+      name: item.name,
+      markers: [item.marker],
+      row: item.row,
+      col: item.col,
+      raw: item.raw,
+      normalized: n,
+      value: v,
+      redness: Math.round(item.raw * 10) / 10,
+      corrected: Math.round(n * 100) / 100,
+      bg: 0,
+      whiteRef: 0,
+      qrRect: item.qrRect || null,
+    };
+  });
+}
 
-    const brightThreshold = 120;
-    bestStart = 0; bestEnd = h - 1;
-    let bestLen = 0, curStart = -1;
-    for (const p of profile) {
-      if (p.bright > brightThreshold) {
-        if (curStart === -1) curStart = p.y;
-      } else {
-        if (curStart !== -1) {
-          const len = p.y - curStart;
-          if (len > bestLen) { bestLen = len; bestStart = curStart; bestEnd = p.y; }
-          curStart = -1;
+// Draw ROI boxes and value overlays on the warped canvas using known pad positions
+function drawOverlay(results, normalized, maxRaw) {
+  var canvas = document.getElementById('warpedCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  for (var i = 0; i < results.length && i < _qrScanRegions.length; i++) {
+    var r = results[i];
+    var region = _qrScanRegions[i];
+    var padR = padRectFromQR(region);
+    var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
+    // ROI boundary
+    ctx.strokeStyle = 'rgba(0, 255, 200, 0.8)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x, y, w, h);
+    // Value background label
+    var valColors = ['rgba(100,100,100,0.5)', 'rgba(255,200,50,0.6)', 'rgba(255,120,50,0.6)', 'rgba(255,0,0,0.6)'];
+    ctx.fillStyle = valColors[r.value] || 'rgba(100,100,100,0.5)';
+    ctx.fillRect(x + 2, y + 2, w - 4, 22);
+    // Label and value
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.fillText(r.name + '=' + r.value, x + 6, y + 17);
+    // Normalized percentage
+    ctx.font = '10px sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.fillText((r.normalized * 100).toFixed(0) + '%', x + 6, y + h - 5);
+    // QR scan box outline
+    ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(region.cx - 65, region.cy - 27, 130, 55);
+    ctx.setLineDash([]);
+  }
+}
+
+// Scan warped canvas for QR codes at known positions from physical measurements
+// Scan boxes are slightly oversized for tolerance
+function scanQRCodes(warpedCanvas) {
+  if (typeof jsQR === 'undefined') return null;
+  try {
+    var ctx = warpedCanvas.getContext('2d');
+    var found = [];
+    var boxW = 130, boxH = 55;
+    for (var i = 0; i < _qrScanRegions.length; i++) {
+      var qr = _qrScanRegions[i];
+      var scanX = Math.max(0, Math.round(qr.cx - boxW / 2));
+      var scanY = Math.max(0, Math.round(qr.cy - boxH / 2));
+      var sw = Math.min(boxW, _warpWidth - scanX);
+      var sh = Math.min(boxH, _warpHeight - scanY);
+      if (sw < 30 || sh < 20) continue;
+      var imgData = ctx.getImageData(scanX, scanY, sw, sh);
+      var code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: 'dontInvert' });
+      if (code && code.data && code.data.length > 0) {
+        var text = code.data.trim();
+        var qrCX = scanX + (code.location.topLeftCorner.x + code.location.bottomRightCorner.x) / 2;
+        var qrCY = scanY + (code.location.topLeftCorner.y + code.location.bottomRightCorner.y) / 2;
+        var padIdx = getPadIdxFromQRText(text);
+        if (padIdx >= 0) {
+          found.push({
+            text: text,
+            qrX: qrCX,
+            qrY: qrCY,
+            gridRow: Math.floor(padIdx / _cvCols),
+            gridCol: padIdx % _cvCols,
+            expectedIdx: padIdx
+          });
         }
       }
     }
-    if (curStart !== -1 && (h - curStart) > bestLen) { bestStart = curStart; bestEnd = h - 1; }
-    if (bestLen < h * 0.05) { bestStart = Math.round(h * 0.05); bestEnd = Math.round(h * 0.95); }
+    return found;
+  } catch(e) {
+    console.warn('QR scan error:', e);
+    return null;
   }
+}
 
-  const windowH = bestEnd - bestStart;
 
-  // Step 2: Extract and smooth the redness profile
-  const rawProfile = extractProfile(imgData, w, h, bestStart, bestEnd);
-  const smooth = smoothProfile(rawProfile, 11);
-
-  // Step 3: Find the white reference — the membrane's own redness under current lighting.
-  // Use the 10th percentile of profile redness (robust to outliers, represents clean white membrane).
-  const rednessVals = smooth.map(p => p.redness).sort((a, b) => a - b);
-  const whiteRef = rednessVals[Math.floor(rednessVals.length * 0.10)] || 0;
-
-  // Step 4: Find peaks in the smoothed profile (above white reference)
-  const stdRedness = smooth.reduce((s, p) => s + p.redness * p.redness, 0) / smooth.length;
-  const noiseFloor = Math.max(1.0, Math.sqrt(stdRedness) * 1.5, whiteRef + 2);
-  // Use small minDist to catch tight A/B double bands
-  const findDist = Math.max(4, Math.round(windowH * 0.012));
-  const allPeaks = findProfilePeaks(smooth, noiseFloor, findDist);
-
-  // Lane-level dedup: merge peaks too close to be separate lanes, keeping the tallest
-  const laneDist = Math.max(12, Math.round(windowH * 0.04));
-  const deduped = [];
-  const sortedByH = [...allPeaks].sort((a, b) => b.redness - a.redness);
-  for (const p of sortedByH) {
-    let tooClose = false;
-    for (const d of deduped) {
-      if (Math.abs(p.y - d.y) < laneDist) { tooClose = true; break; }
-    }
-    if (!tooClose) deduped.push(p);
+// Main OpenCV scanning pipeline
+function processImageWithOpenCV(canvas) {
+  if (!cvReady) { return getEmptyResults('OpenCV.js is still loading. Please wait.'); }
+  if (openCvFailed) { return getEmptyResults('OpenCV.js failed to load. Check your internet connection.'); }
+  var src, corners, warped;
+  try {
+    src = cv.imread(canvas);
+  } catch(e) {
+    return getEmptyResults('Failed to read image: ' + e.message);
   }
-
-  // Assign peaks to lanes: L1=topmost, L4=bottommost
-  deduped.sort((a, b) => a.y - b.y);
-  const assignedPeaks = deduped.slice(0, 4); // at most 4, in Y order
-
-  const names = ['L1', 'L2', 'L3', 'L4'];
-  const results = [];
-  const halfH = Math.max(6, Math.round(windowH * 0.018));
-  const bgGap = Math.max(4, Math.round(windowH * 0.02));
-  const peakCount = deduped.length;
-  results._peakCount = peakCount;
-
-  // Step 5: Measure each lane using its assigned peak (if any)
-  for (let li = 0; li < 4; li++) {
-    let sigA, sigB;
-
-    if (li < assignedPeaks.length) {
-      const pk = assignedPeaks[li];
-
-      // B band: main peak signal
-      sigB = measurePeakSignal(imgData, w, rawProfile, pk.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
-
-      // A band: look for a nearby peak above this one (not assigned to another lane)
-      let foundSecondary = false;
-      for (const sp of deduped) {
-        if (sp.y < pk.y && (pk.y - sp.y) < halfH * 4 && sp.idx !== pk.idx) {
-          // Only use if not already an assigned lane peak or is very close (sub-band)
-          const isAssigned = assignedPeaks.some(ap => ap.idx === sp.idx);
-          if (!isAssigned || (pk.y - sp.y) < halfH * 2) {
-            sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
-            foundSecondary = true;
-            break;
-          }
-        }
-      }
-      if (!foundSecondary) {
-        // Also check allPeaks for small secondary peaks not in deduped
-        for (const sp of allPeaks) {
-          if (sp.y < pk.y && (pk.y - sp.y) < halfH * 3 && sp.y !== pk.y) {
-            const isAssigned = assignedPeaks.some(ap => ap.idx === sp.idx);
-            if (!isAssigned) {
-              sigA = measurePeakSignal(imgData, w, rawProfile, sp.idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
-              foundSecondary = true;
-              break;
-            }
-          }
-        }
-      }
-      if (!foundSecondary) {
-        // Measure at offset position
-        const offsetY = pk.y - Math.max(8, Math.round(windowH * 0.025));
-        let bestRaw = -999, bestAboveBg = -999;
-        const effBg = Math.max(sigB.bg, whiteRef);
-        const aY1 = Math.max(bestStart, offsetY - halfH);
-        const aY2 = Math.min(bestEnd, offsetY + halfH);
-        for (let y = aY1; y < aY2; y += 2) {
-          const m = measureRednessAtRow(imgData, w, y);
-          if (m.redness > bestRaw) {
-            bestRaw = m.redness;
-            bestAboveBg = m.redness - effBg;
-          }
-        }
-        sigA = {
-          raw: bestRaw > -999 ? bestRaw : 0,
-          corrected: Math.max(0, bestAboveBg),
-          bg: sigB.bg,
-          whiteRef: sigB.whiteRef,
-        };
-      }
-    } else {
-      // Fewer than 4 peaks — use fallback fraction for this lane
-      const fallbackY = Math.round(bestStart + windowH * [0.106, 0.216, 0.373, 0.473][li]);
-      let idx = rawProfile.findIndex(p => p.y >= fallbackY);
-      if (idx < 0) idx = Math.floor(rawProfile.length / 2);
-      sigB = measurePeakSignal(imgData, w, rawProfile, idx, bestStart, bestEnd, halfH, bgGap, whiteRef);
-      if (sigB.raw <= 0) sigB = { raw: 0, corrected: 0, bg: 0, whiteRef: Math.round(whiteRef * 10) / 10 };
-      sigA = { raw: 0, corrected: 0, bg: sigB.bg, whiteRef: sigB.whiteRef };
+  try {
+    corners = findStripCorners(src);
+    if (!corners) {
+      src.delete();
+      return getEmptyResults('Strip not found. Ensure the test strip is clearly visible against a contrasting background with good lighting.');
     }
-
-    results.push({
-      name: names[li] + 'A',
-      raw: sigA.raw,
-      corrected: Math.round(Math.max(0, sigA.corrected) * 10) / 10,
-      bg: sigA.bg,
-      whiteRef: sigA.whiteRef,
-      markers: [names[li] + 'a'],
+    warped = warpStrip(src, corners, _warpWidth, _warpHeight);
+    if (!warped || warped.empty()) {
+      src.delete();
+      return getEmptyResults('Failed to warp strip. Try a different camera angle.');
+    }
+    // Display warped image on canvas
+    cv.imshow('warpedCanvas', warped);
+    var wCanvas = document.getElementById('warpedCanvas');
+    // Scan for QR codes at known physical positions
+    var qrCodes = scanQRCodes(wCanvas);
+    var qrMap = {};
+    if (qrCodes && qrCodes.length >= 2) {
+      for (var qi = 0; qi < qrCodes.length; qi++) {
+        qrMap[qrCodes[qi].expectedIdx] = qrCodes[qi];
+      }
+    }
+    // Measure each pad at its known position (from physical strip measurements)
+    var rawValues = [];
+    for (var i = 0; i < _qrScanRegions.length; i++) {
+      var region = _qrScanRegions[i];
+      var padR = padRectFromQR(region);
+      var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
+      var roi = warped.roi(rect);
+      var score = measureROIRedness(roi);
+      var padIdx = getPadIdxFromQRText(region.name);
+      var row = Math.floor(padIdx / _cvCols);
+      var col = padIdx % _cvCols;
+      rawValues.push({
+        name: region.padName,
+        marker: region.marker,
+        raw: score,
+        row: row,
+        col: col,
+        qrRect: qrMap[padIdx] ? { x: rect.x, y: rect.y, w: rect.w, h: rect.h } : { x: padR.x, y: padR.y, w: padR.w, h: padR.h },
+      });
+    }
+    // Normalize
+    var maxRaw = 0;
+    for (var i = 0; i < rawValues.length; i++) {
+      if (rawValues[i].raw > maxRaw) maxRaw = rawValues[i].raw;
+    }
+    if (maxRaw < 0.001) maxRaw = 1;
+    var normalized = rawValues.map(function(item) {
+      return { name: item.name, marker: item.marker, raw: item.raw, row: item.row, col: item.col, normalized: item.raw / maxRaw, qrRect: item.qrRect };
     });
-    results.push({
-      name: names[li] + 'B',
-      raw: sigB.raw,
-      corrected: Math.round(Math.max(0, sigB.corrected) * 10) / 10,
-      bg: sigB.bg,
-      whiteRef: sigB.whiteRef,
-      markers: [names[li] + 'b'],
-    });
+    _cvStripData = normalized;
+    var results = mapToValues(normalized);
+    _cvResults = results;
+    // Draw overlay
+    drawOverlay(results, normalized, maxRaw);
+    // Adequacy
+    var vals = results.map(function(r) { return r.value; });
+    var maxVal = Math.max.apply(null, vals);
+    results.refMax = Math.round(maxRaw * 1000) / 1000;
+    results.whiteRef = 0;
+    results.thresholds = {
+      score0: _cvCalNeg >= 0 ? _cvCalNeg : 0.10,
+      score1: _cvCalPos >= 0 ? (_cvCalNeg >= 0 ? (_cvCalNeg + _cvCalPos) * 0.25 : _cvCalPos * 0.25) : 0.25,
+      score2: _cvCalPos >= 0 ? _cvCalPos * 0.7 : 0.50
+    };
+    var valid = maxVal > 0 || maxRaw > 0.01;
+    results.adequacy = {
+      valid: valid,
+      confidence: maxRaw > 0.05 ? 'high' : (maxRaw > 0.01 ? 'medium' : 'low'),
+      message: valid ? '' : 'No significant red signal detected. Ensure the strip has developed properly.',
+    };
+    // Clean up
+    warped.delete();
+    src.delete();
+    return results;
+  } catch(e) {
+    if (src) try { src.delete(); } catch(ex) {}
+    if (warped) try { warped.delete(); } catch(ex) {}
+    if (corners) try { corners.delete(); } catch(ex) {}
+    return getEmptyResults('Error during analysis: ' + e.message);
   }
+}
 
-  // Step 5: Self-referencing — max corrected value = 100% reference
-  let refMax = 0;
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].corrected > refMax) refMax = results[i].corrected;
+// Get ROI index from canvas click coordinates (handles QR-based ROIs)
+function getROIIndex(canvas, clientX, clientY) {
+  var rect = canvas.getBoundingClientRect();
+  var scaleX = canvas.width / rect.width;
+  var scaleY = canvas.height / rect.height;
+  var x = (clientX - rect.left) * scaleX;
+  var y = (clientY - rect.top) * scaleY;
+  // First try QR-based ROIs
+  if (_cvStripData) {
+    for (var i = 0; i < _cvStripData.length; i++) {
+      var qr = _cvStripData[i].qrRect;
+      if (qr && x >= qr.x && x <= qr.x + qr.w && y >= qr.y && y <= qr.y + qr.h) {
+        return i;
+      }
+    }
   }
-
-  for (let i = 0; i < results.length; i++) {
-    const r = results[i];
-    r.redness = Math.round(r.raw * 10) / 10;
-    r.value = classifyRelative(r.corrected, refMax);
+  // Fall back to checking all pad rects from known positions
+  for (var i = 0; i < _qrScanRegions.length; i++) {
+    var pr = padRectFromQR(_qrScanRegions[i]);
+    if (x >= pr.x && x <= pr.x + pr.w && y >= pr.y && y <= pr.y + pr.h) return i;
   }
-
-  results.refMax = Math.round(refMax * 10) / 10;
-  results.whiteRef = Math.round(whiteRef * 10) / 10;
-
-  // Step 6: Adequacy — check if strongest signal is meaningful
-  const allCorrected = results.map(r => r.corrected).filter(v => v > 0);
-  const maxSignal = allCorrected.length > 0 ? Math.max(...allCorrected) : 0;
-  const valid = maxSignal >= 3;
-  results.adequacy = {
-    valid: valid,
-    confidence: valid ? 'high' : 'low',
-    message: valid ? '' : 'No significant line detected. Ensure good lighting and focus.',
-  };
-
-  results.thresholds = { score0: 0, score1: 1, score2: 2 };
-
-  return results;
+  return -1;
 }
 
 function openCamera() {
@@ -1869,6 +2138,8 @@ function openCamera() {
   overlay.classList.add("show");
   // Reset UI
   document.getElementById("camResult").style.display = "none";
+  document.getElementById("camWarpSection").style.display = "none";
+  document.getElementById("camCalSection").style.display = "none";
   document.getElementById("camCaptureBtn").style.display = "none";
   document.getElementById("camPlaceholder").style.display = "flex";
   document.getElementById("camVideo").style.display = "none";
@@ -1910,13 +2181,13 @@ function closeCamera() {
   if (camStream.current) { camStream.current.getTracks().forEach(t => t.stop()); camStream.current = null; }
   document.getElementById("cameraOverlay").classList.remove("show");
   document.getElementById("camTitle").textContent = "Scan Test Strip";
-  document.getElementById("camSub").textContent = "Position the test strip window within the guide and tap Capture.";
+  document.getElementById("camSub").textContent = "Hold the strip upright. Align the 8 QR codes (right side) with the blue dots. Keep the strip inside the dashed frame.";
 }
 
 function captureAndAnalyze() {
   const video = document.getElementById("camVideo");
   const canvas = document.createElement("canvas");
-  const maxDim = 800;
+  const maxDim = 1200;
   const vw = video.videoWidth || 1280;
   const vh = video.videoHeight || 720;
   const scale = Math.min(maxDim / vw, maxDim / vh, 1);
@@ -1924,8 +2195,7 @@ function captureAndAnalyze() {
   canvas.height = Math.round(vh * scale);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-  const results = scanImage(imgData, canvas.width, canvas.height);
+  const results = processImageWithOpenCV(canvas);
   showScanResults(results);
 }
 
@@ -1935,61 +2205,49 @@ function showScanResults(results) {
   document.getElementById("camProcessing").style.display = "block";
   document.getElementById("camDetectedVals").style.display = "none";
   document.getElementById("camNotDetected").style.display = "none";
+  document.getElementById("camWarpSection").style.display = "none";
+  document.getElementById("camCalSection").style.display = "none";
   window._scanResults = results;
-  setTimeout(() => {
+  setTimeout(function() {
     document.getElementById("camProcessing").style.display = "none";
-    if (results.length > 0) {
+    if (results && results.length > 0) {
+      var adequacy = results.adequacy || { valid: true, confidence: 'high', message: '' };
+      if (adequacy.valid) {
+        document.getElementById("camWarpSection").style.display = "block";
+        document.getElementById("camCalSection").style.display = "block";
+      }
       document.getElementById("camDetectedVals").style.display = "block";
-      const list = document.getElementById("camDetectedList");
-
-      // Show confidence/adequacy warning if low
-      const adequacy = results.adequacy || { valid: true, confidence: 'high', message: '' };
-      let warningHtml = '';
+      var list = document.getElementById("camDetectedList");
+      var warningHtml = '';
       if (adequacy.confidence !== 'high') {
-        const warnColor = adequacy.valid ? 'var(--orange)' : '#b83a36';
+        var warnColor = adequacy.valid ? 'var(--orange)' : '#b83a36';
         warningHtml = '<div style="background:' + warnColor + '15;border:1px solid ' + warnColor + '40;border-radius:8px;padding:8px 10px;margin-bottom:10px;font-size:12px;color:' + warnColor + ';">' +
           '<strong>' + (adequacy.valid ? 'Low Confidence' : 'Warning') + ':</strong> ' + adequacy.message + '</div>';
       }
-
-      // Show relative scoring reference
-      const refMax = results.refMax || 0;
-      const whiteRef = results.whiteRef || 0;
-      const peakCount = results._peakCount || '?';
-      const thHtml = refMax > 0
-        ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:8px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
-          'Peaks: ' + peakCount + ' | max=' + refMax.toFixed(1) + ' | white=' + whiteRef.toFixed(1) +
-          ' &mdash; 1:1&ndash;35% | 2:36&ndash;70% | 3:71&ndash;100%' +
+      var refMax = results.refMax || 0;
+      var thHtml = refMax > 0
+        ? '<div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid rgba(0,0,0,0.04);">' +
+          'max red=' + (refMax * 100).toFixed(1) + '%' +
+          ' &mdash; values: 1=faint | 2=medium | 3=strong' +
           '</div>'
         : '';
-
-      let html = warningHtml + thHtml;
-      for (let i = 0; i < 8; i += 2) {
-        const a = results[i], b = results[i + 1];
-        const lineLabel = a.name.charAt(0) + a.name.charAt(1);
-        const valColor = (v) => v >= 2 ? 'var(--green)' : v === 1 ? 'var(--orange)' : 'var(--text-tertiary)';
-        const diagA = (a.bg !== undefined)
-          ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
-            'raw=' + a.raw.toFixed(1) + ' bg=' + a.bg.toFixed(1) + ' w=' + (a.whiteRef !== undefined ? a.whiteRef.toFixed(1) : '?') + '</span>'
-          : '';
-        const diagB = (b.bg !== undefined)
-          ? '<span style="font-size:9px;color:var(--text-tertiary);opacity:0.5;margin-left:2px;">' +
-            'raw=' + b.raw.toFixed(1) + ' bg=' + b.bg.toFixed(1) + ' w=' + (b.whiteRef !== undefined ? b.whiteRef.toFixed(1) : '?') + '</span>'
-          : '';
-        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;font-size:14px;border-bottom:1px solid rgba(0,0,0,0.04);flex-wrap:wrap;">' +
-          '<div style="display:flex;align-items:center;gap:4px;min-width:28px;"><span style="font-weight:600;">' + lineLabel + '</span></div>' +
-          '<div style="display:flex;align-items:center;gap:4px;">' +
-            '<span style="font-size:12px;color:var(--text-tertiary);">A:</span>' +
-            '<span style="font-weight:600;color:' + valColor(a.value) + ';min-width:16px;text-align:center;">' + a.value + '</span>' +
-            '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.7;">(' + a.corrected.toFixed(1) + ')</span>' + diagA +
-          '</div>' +
-          '<div style="display:flex;align-items:center;gap:4px;margin-left:8px;">' +
-            '<span style="font-size:12px;color:var(--text-tertiary);">B:</span>' +
-            '<span style="font-weight:600;color:' + valColor(b.value) + ';min-width:16px;text-align:center;">' + b.value + '</span>' +
-            '<span style="font-size:10px;color:var(--text-tertiary);opacity:0.7;">(' + b.corrected.toFixed(1) + ')</span>' + diagB +
-          '</div>' +
-        '</div>';
+      var html = warningHtml + thHtml;
+      // Show results in a 2x4 grid format
+      html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">';
+      for (var i = 0; i < results.length; i++) {
+        var r = results[i];
+        var valColors = ['var(--text-tertiary)', 'var(--orange)', '#e07b30', 'var(--red)'];
+        var bgColors = ['rgba(0,0,0,0.03)', 'rgba(232,137,52,0.12)', 'rgba(232,137,52,0.18)', 'rgba(214,79,74,0.15)'];
+        var displayName = r.name || ('L' + (Math.floor(i/2)+1) + (i%2===0?'a':'b'));
+        html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:6px;background:' + bgColors[r.value] + ';">' +
+          '<span style="font-size:12px;font-weight:500;color:var(--text-secondary);">' + displayName + '</span>' +
+          '<span style="font-weight:700;font-size:15px;color:' + valColors[r.value] + ';">' + r.value + '</span>' +
+          '</div>';
       }
+      html += '</div>';
       list.innerHTML = html;
+      // Update calibration status
+      updateCalStatus();
     } else {
       document.getElementById("camNotDetected").style.display = "block";
     }
@@ -2004,14 +2262,13 @@ function analyzeUploadedFile(file) {
     const img = new Image();
     img.onload = function() {
       const canvas = document.createElement("canvas");
-      const maxDim = 800;
+      const maxDim = 1200;
       const scale = Math.min(maxDim / img.width, maxDim / img.height, 1);
       canvas.width = Math.round(img.width * scale);
       canvas.height = Math.round(img.height * scale);
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      const results = scanImage(imgData, canvas.width, canvas.height);
+      const results = processImageWithOpenCV(canvas);
       showScanResults(results);
     };
     img.src = e.target.result;
@@ -2102,6 +2359,76 @@ document.getElementById("camFileInput").addEventListener("change", (e) => {
   if (e.target.files && e.target.files[0]) {
     analyzeUploadedFile(e.target.files[0]);
   }
+});
+
+// ===== CALIBRATION UI =====
+function updateCalStatus() {
+  var statusEl = document.getElementById("calStatus");
+  if (!statusEl) return;
+  var negStr = _cvCalNeg >= 0 ? (_cvCalNeg * 100).toFixed(1) + '%' : '--';
+  var posStr = _cvCalPos >= 0 ? (_cvCalPos * 100).toFixed(1) + '%' : '--';
+  statusEl.innerHTML = 'References: <span style="color:var(--orange);">Neg: ' + negStr + '</span> &middot; <span style="color:var(--red);">Pos: ' + posStr + '</span>' +
+    (_cvCalNeg >= 0 && _cvCalPos >= 0 ? ' &middot; <span style="color:var(--green);font-weight:500;">Calibrated</span>' : '');
+}
+
+function applyAndRedisplay() {
+  if (!_cvStripData) return;
+  var results = mapToValues(_cvStripData);
+  _cvResults = results;
+  window._scanResults = results;
+  var maxRaw = 0;
+  for (var i = 0; i < _cvStripData.length; i++) {
+    if (_cvStripData[i].raw > maxRaw) maxRaw = _cvStripData[i].raw;
+  }
+  drawOverlay(results, _cvStripData, maxRaw);
+  // Re-render the results list
+  showScanResults(results);
+  updateCalStatus();
+}
+
+// Warped canvas click for calibration
+document.getElementById("warpedCanvas").addEventListener("click", function(e) {
+  if (!_cvCalMode || !_cvStripData) return;
+  var idx = getROIIndex(this, e.clientX, e.clientY);
+  if (idx < 0 || idx >= _cvStripData.length) return;
+  if (_cvCalMode === 'neg') {
+    _cvCalNeg = _cvStripData[idx].normalized;
+    _cvCalPadNeg = idx;
+  } else if (_cvCalMode === 'pos') {
+    _cvCalPos = _cvStripData[idx].normalized;
+    _cvCalPadPos = idx;
+  }
+  _cvCalMode = null;
+  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
+  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
+  applyAndRedisplay();
+});
+
+document.getElementById("calNegBtn").addEventListener("click", function() {
+  if (!_cvStripData) return;
+  _cvCalMode = (_cvCalMode === 'neg') ? null : 'neg';
+  this.style.borderColor = _cvCalMode === 'neg' ? 'var(--orange)' : 'var(--card-border)';
+  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
+  if (!_cvCalMode && !_cvCalPos) _cvCalMode = 'neg'; // auto-select if no mode
+});
+
+document.getElementById("calPosBtn").addEventListener("click", function() {
+  if (!_cvStripData) return;
+  _cvCalMode = (_cvCalMode === 'pos') ? null : 'pos';
+  this.style.borderColor = _cvCalMode === 'pos' ? 'var(--red)' : 'var(--card-border)';
+  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
+});
+
+document.getElementById("calResetBtn").addEventListener("click", function() {
+  _cvCalNeg = -1;
+  _cvCalPos = -1;
+  _cvCalPadNeg = -1;
+  _cvCalPadPos = -1;
+  _cvCalMode = null;
+  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
+  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
+  if (_cvStripData) applyAndRedisplay();
+  updateCalStatus();
 });
 </script>
 </body>
