@@ -11,6 +11,7 @@
     if (typeof cv !== 'undefined') {
       cv['onRuntimeInitialized'] = function() {
         cvReady = true;
+        openCvFailed = false; // recover if timeout fired before init completed
       };
     }
   }
@@ -1176,10 +1177,10 @@ function getPadIdxFromQRText(text) {
   return -1;
 }
 
-// OpenCV timeout guard
+// OpenCV timeout guard (60s for slower devices like iPad)
 setTimeout(function() {
   if (!cvReady) openCvFailed = true;
-}, 30000);
+}, 60000);
 
 function getEmptyResults(msg) {
   var arr = [];
@@ -2017,8 +2018,10 @@ function scanQRCodes(warpedCanvas) {
 
 // Main OpenCV scanning pipeline
 function processImageWithOpenCV(canvas) {
-  if (!cvReady) { return getEmptyResults('OpenCV.js is still loading. Please wait.'); }
-  if (openCvFailed) { return getEmptyResults('OpenCV.js failed to load. Check your internet connection.'); }
+  if (!cvReady) {
+    if (openCvFailed) return getEmptyResults('OpenCV.js failed to load. Check your internet connection and reload.');
+    return getEmptyResults('OpenCV.js is still loading. Please wait.');
+  }
   var src, corners, warped;
   try {
     src = cv.imread(canvas);
@@ -2143,19 +2146,19 @@ function openCamera() {
   document.getElementById("camCaptureBtn").style.display = "none";
   document.getElementById("camPlaceholder").style.display = "flex";
   document.getElementById("camVideo").style.display = "none";
-  document.getElementById("camGuide").style.display = "none";
+  document.getElementById("camGuide").style.display = "block";
   document.getElementById("camBtnRow").style.display = "flex";
   document.getElementById("camAcceptRow").style.display = "none";
   document.getElementById("camFileInput").value = "";
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    document.getElementById("camPlaceholder").innerHTML = '<p style="color:#b83a36;font-size:13px;">Camera not available</p>';
+    document.getElementById("camPlaceholder").innerHTML = '<p style="color:var(--text-secondary);font-size:13px;">Camera not available on this device</p><p style="color:var(--text-tertiary);font-size:12px;margin-top:4px;">Use <strong>Upload Photo</strong> below to select a test strip image. Use the guide above to frame your strip.</p>';
     return;
   }
   // iOS Safari: try exact environment first, fallback to any camera
   const constraints = [{ video: { facingMode: { exact: "environment" } } }, { video: { facingMode: "environment" } }, { video: true }];
   function tryCam(idx) {
     if (idx >= constraints.length) {
-      document.getElementById("camPlaceholder").innerHTML = '<p style="color:#b83a36;font-size:13px;">Camera blocked by browser</p><p style="color:var(--text-secondary);font-size:12px;margin-top:4px;">Use <strong>Upload Photo</strong> below to select a test strip image</p>';
+      document.getElementById("camPlaceholder").innerHTML = '<p style="color:#b83a36;font-size:13px;">Camera blocked or not found</p><p style="color:var(--text-secondary);font-size:12px;margin-top:4px;">Use <strong>Upload Photo</strong> below to select a test strip image. The guide above shows where to position it.</p>';
       return;
     }
     navigator.mediaDevices.getUserMedia(constraints[idx])
@@ -2168,7 +2171,6 @@ function openCamera() {
             video.style.display = "block";
             document.getElementById("camPlaceholder").style.display = "none";
             document.getElementById("camCaptureBtn").style.display = "block";
-            document.getElementById("camGuide").style.display = "block";
           }).catch(() => {});
         };
       })
