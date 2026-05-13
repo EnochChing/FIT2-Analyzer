@@ -458,13 +458,6 @@
     padding: 20px;
   }
   .bmi-overlay.show { display: flex; }
-
-  /* Mobile touch-friendly tweaks */
-  @media (max-width: 800px) {
-    #camBtnRow .btn, #camAcceptRow .btn { padding: 14px 12px !important; font-size: 15px; min-height: 48px; }
-    #camDetectedList > div { padding: 10px 12px !important; }
-    .btn-cal { padding: 10px 12px !important; font-size: 13px !important; }
-  }
   .bmi-modal {
     background: #fff;
     border-radius: 20px;
@@ -502,7 +495,7 @@
 <div class="app-container" id="app">
   <div class="screen-container" id="screenContainer">
     <!-- Home -->
-    <div class="screen" id="screenHome">
+    <div class="screen active" id="screenHome">
       <div class="screen-header">
         <div>
           <h2 id="homeTitle">FIT 2.0 AI Analyser</h2>
@@ -548,7 +541,7 @@
     </div>
 
     <!-- Scan -->
-    <div class="screen active" id="screenScan">
+    <div class="screen" id="screenScan">
       <div class="screen-header">
         <h2 id="scanTitle">Scan</h2>
       </div>
@@ -635,10 +628,10 @@
 
   <!-- Camera Scanner Modal -->
   <div class="bmi-overlay" id="cameraOverlay">
-    <div class="bmi-modal" id="camModal" style="max-width:380px;">
+    <div class="bmi-modal" style="max-width:380px;">
       <h3 id="camTitle">Scan Test Strip</h3>
-      <div class="bmi-sub" id="camSub">Align the 8 QR codes with the blue dots</div>
-      <div id="camVideoContainer" style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;">
+      <div class="bmi-sub" id="camSub">Position the strip so QR codes are on the <strong>right side</strong> with the 8 blue dots. Keep the strip upright in the dashed frame.</div>
+      <div style="position:relative;background:#000;border-radius:12px;overflow:hidden;margin-bottom:12px;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;">
         <video id="camVideo" autoplay playsinline style="width:100%;height:100%;object-fit:cover;display:none;"></video>
         <div id="camPlaceholder" style="color:#888;font-size:14px;text-align:center;padding:20px;">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
@@ -689,25 +682,18 @@
           <div style="position:relative;background:#000;border-radius:8px;overflow:hidden;">
             <canvas id="warpedCanvas" width="800" height="1138" style="width:100%;display:block;cursor:pointer;background:#111;"></canvas>
           </div>
-          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Click a pad in calibration mode</div>
+          <div style="font-size:10px;color:var(--text-tertiary);margin-top:2px;">Drag the <span style="color:rgba(0,255,200,0.9);">cyan handle</span> to reposition a detection zone &middot; Press <b>Done</b> to re-detect</div>
         </div>
 
-        <!-- Calibration UI -->
-        <div id="camCalSection" style="display:none;background:rgba(59,130,196,0.04);border-radius:10px;padding:10px;margin-bottom:8px;">
-          <div style="font-size:12px;font-weight:600;color:var(--accent-dim);margin-bottom:4px;">Calibration</div>
-          <div style="font-size:11px;color:var(--text-tertiary);margin-bottom:6px;">1) Click <b>Set Negative</b> &rarr; click a known-negative pad. 2) Click <b>Set Positive</b> &rarr; click a known-strong pad. All pads reclassify. Drag cyan handles to adjust zones.</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;">
-            <button class="btn-cal" id="calNegBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Negative</button>
-            <button class="btn-cal" id="calPosBtn" style="flex:1;min-width:70px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Set Positive</button>
-            <button class="btn-cal" id="calResetBtn" style="flex:0;min-width:50px;padding:5px 8px;border-radius:8px;border:1.5px solid var(--card-border);background:var(--card);font-size:11px;font-weight:500;cursor:pointer;transition:all 0.15s;">Reset</button>
-          </div>
-          <div id="calStatus" style="font-size:11px;color:var(--text-tertiary);line-height:1.4;">References: <span style="color:var(--orange);">Neg: --</span> &middot; <span style="color:var(--red);">Pos: --</span></div>
-        </div>
+
       </div>
       <div class="btn-row" id="camBtnRow">
         <button class="btn btn-secondary" id="camCaptureBtn" style="display:none;">Capture</button>
-        <button class="btn btn-secondary" id="camUploadBtn">Upload Photo</button>
+	        <button class="btn btn-secondary" id="camUploadBtn">Upload Photo</button>
         <button class="btn btn-secondary" id="camCloseBtn">Close Camera</button>
+      </div>
+      <div class="btn-row" id="camDoneRow" style="display:none;">
+        <button class="btn btn-primary" id="camDoneBtn" >Re-detect</button>
       </div>
       <div class="btn-row" id="camAcceptRow" style="display:none;">
         <button class="btn btn-primary" id="camAcceptBtn" style="flex:1;">Use Detected Values</button>
@@ -719,11 +705,11 @@
 
   <!-- Tab Bar -->
   <nav class="tab-bar" id="tabBar">
-    <button class="tab-item" data-tab="Home">
+    <button class="tab-item active" data-tab="Home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
       <span class="tab-item-label">Home</span>
     </button>
-    <button class="tab-item active" data-tab="Scan">
+    <button class="tab-item" data-tab="Scan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor" stroke="none"/><path d="M21 15l-5-5L5 21"/></svg>
       <span class="tab-item-label">Scan</span>
     </button>
@@ -1118,7 +1104,7 @@ function setLang(l) {
 }
 
 // ===== STATE =====
-// Mobile detection: larger pad windows for less precise alignment, bigger drag handles
+// Mobile detection & touch-friendly settings
 var _cvMobile = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 var _cvHandleSize = _cvMobile ? 50 : 24;
 let currentProfile = loadProfile();
@@ -1129,7 +1115,6 @@ let viewerIndex = null; // history viewer
 // ===== OPENCV STATE =====
 let _cvStripData = null;      // raw measurement data for each pad
 let _cvStripRawPixels = null; // saved RGB pixel data per pad for recalibration [{data, w, h} or null]
-let _cvCalMode = null;        // 'neg' or 'pos' when awaiting click
 let _cvResults = null;        // last scan results
 let _cvPadOffsets = [         // user-drag offsets per pad {dx, dy}, applied on top of padRectFromQR
   {dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0},{dx:0,dy:0},
@@ -1171,12 +1156,12 @@ function padRectFromQR(qrRegion, idx, detectedQr) {
   // Use detected QR position if available (1cm = ~62px left of QR center)
   var cx = (detectedQr && detectedQr.qrX != null) ? detectedQr.qrX : qrRegion.cx;
   var cy = (detectedQr && detectedQr.qrY != null) ? detectedQr.qrY : qrRegion.cy;
+  var padOffsets = [100, 120, 150, 150, 120, 120, 150, 150];
+  var padLeft = Math.max(0, Math.round(cx - ((idx >= 0 && idx < 8) ? padOffsets[idx] : 90)));
+  var padTop  = Math.max(0, Math.round(cy - 20));
   var mobile = _cvMobile;
   var pw = mobile ? 44 : 60;
   var ph = mobile ? 26 : 40;
-  var padOffsets = [100, 120, 150, 150, 120, 120, 150, 150];
-  var padLeft = Math.max(0, Math.round(cx - ((idx >= 0 && idx < 8) ? padOffsets[idx] : 90)));
-  var padTop  = Math.max(0, Math.round(cy - Math.floor(ph / 2)));
   var off = (idx >= 0 && idx < 8) ? _cvPadOffsets[idx] : {dx:0, dy:0};
   return {
     x: Math.max(0, padLeft + off.dx),
@@ -1897,7 +1882,6 @@ var _cvRefColors = [
   { r: 195, g: 124, b: 118 },  // 2 — medium
   { r: 150, g: 42,  b: 29  }   // 3 — strong positive
 ];
-var _cvCalCustomRefs = [null, null, null, null]; // calibration overrides
 
 // Euclidean distance squared between two RGB values (no sqrt for speed)
 function colorDistSq(c1, c2) {
@@ -2007,48 +1991,7 @@ function reclassifyPixels(pixelData, w, h, refs) {
   };
 }
 
-// Recompute results using per-pixel reclassification on saved raw data
-function computeResults() {
-  if (!_cvStripData || !_cvStripRawPixels) return _cvStripData || [];
-  var refs = _cvRefColors.slice();
-  for (var i = 0; i < 4; i++) {
-    if (_cvCalCustomRefs[i]) refs[i] = _cvCalCustomRefs[i];
-  }
-  var maxDist = 255 * Math.sqrt(3);
-  return _cvStripData.map(function(m, idx) {
-    var raw = _cvStripRawPixels[idx];
-    var pr;
-    if (raw && raw.data && raw.data.length > 0) {
-      pr = reclassifyPixels(raw.data, raw.w, raw.h, refs);
-    } else {
-      // Fallback: use stored average
-      var bestIdx = 0, bestD = Infinity;
-      var pixel = { r: m.avgR, g: m.avgG, b: m.avgB };
-      for (var v = 0; v < refs.length; v++) {
-        var d = colorDistSq(pixel, refs[v]);
-        if (d < bestD) { bestD = d; bestIdx = v; }
-      }
-      pr = { value: bestIdx, avgR: m.avgR, avgG: m.avgG, avgB: m.avgB };
-    }
-    var dist = 0;
-    var ref = refs[pr.value];
-    if (ref) dist = Math.sqrt(colorDistSq({r:pr.avgR, g:pr.avgG, b:pr.avgB}, ref));
-    return {
-      name: m.name,
-      markers: [m.marker],
-      row: m.row,
-      col: m.col,
-      value: pr.value,
-      distance: Math.round(dist * 10) / 10,
-      confidence: Math.max(0, Math.min(1, 1 - dist / maxDist)),
-      avgR: pr.avgR, avgG: pr.avgG, avgB: pr.avgB,
-      counts: pr.counts || null,
-      qrRect: m.qrRect || null,
-    };
-  });
-}
-
-// Draw ROI boxes and value overlays on the warped canvas
+// Recompute results using per-pixel reclassification on saved raw data// Draw ROI boxes and value overlays on the warped canvas
 function drawOverlay(results, measurements, maxDist) {
   var canvas = document.getElementById('warpedCanvas');
   if (!canvas) return;
@@ -2065,7 +2008,7 @@ function drawOverlay(results, measurements, maxDist) {
     var padR = padRectFromQR(region, i, window._cvQrMap ? window._cvQrMap[i] || null : null);
     var x = padR.x, y = padR.y, w = padR.w, h = padR.h;
     // ROI boundary (thin blue outline)
-    ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+    ctx.strokeStyle = 'rgba(0, 150, 255, 0.7)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x, y, w, h);
     // Drag handle (larger for easy grabbing; bigger on touch devices)
@@ -2219,12 +2162,9 @@ function processImageWithOpenCV(canvas, source) {
     _cvPadOffsets = _cvPadOffsets.map(function(){ return {dx:0, dy:0}; });
     // Build effective reference colors for this scan
     var effRefs = _cvRefColors.slice();
-    for (var ri = 0; ri < 4; ri++) {
-      if (_cvCalCustomRefs[ri]) effRefs[ri] = _cvCalCustomRefs[ri];
-    }
     for (var i = 0; i < _qrScanRegions.length; i++) {
       var region = _qrScanRegions[i];
-      // Use known row Y positions (from QR coords or left-edge refinement)
+      // Use detected QR position if available, otherwise fall back to fixed coords
       var isA = region.name.indexOf('A') >= 0;
       var detectedQr = qrMap[i] || null;
       region = { cx: region.cx, cy: isA ? detectedRowA : detectedRowB, padName: region.padName, marker: region.marker, name: region.name };
@@ -2319,7 +2259,7 @@ function openCamera() {
   // Reset UI
   document.getElementById("camResult").style.display = "none";
   document.getElementById("camWarpSection").style.display = "none";
-  document.getElementById("camCalSection").style.display = "none";
+  
   document.getElementById("camCaptureBtn").style.display = "none";
   document.getElementById("camPlaceholder").style.display = "flex";
   document.getElementById("camVideo").style.display = "none";
@@ -2385,7 +2325,7 @@ function showScanResults(results) {
   document.getElementById("camDetectedVals").style.display = "none";
   document.getElementById("camNotDetected").style.display = "none";
   document.getElementById("camWarpSection").style.display = "none";
-  document.getElementById("camCalSection").style.display = "none";
+  
   window._scanResults = results;
   setTimeout(function() {
     document.getElementById("camProcessing").style.display = "none";
@@ -2393,7 +2333,7 @@ function showScanResults(results) {
       var adequacy = results.adequacy || { valid: true, confidence: 'high', message: '' };
       if (adequacy.valid) {
         document.getElementById("camWarpSection").style.display = "block";
-        document.getElementById("camCalSection").style.display = "block";
+        document.getElementById("camDoneRow").style.display = "flex";
       }
       document.getElementById("camDetectedVals").style.display = "block";
       var list = document.getElementById("camDetectedList");
@@ -2429,7 +2369,6 @@ function showScanResults(results) {
       html += '</div>';
       list.innerHTML = html;
       // Update calibration status
-      updateCalStatus();
     } else {
       document.getElementById("camNotDetected").style.display = "block";
     }
@@ -2542,37 +2481,12 @@ document.getElementById("camFileInput").addEventListener("change", (e) => {
     analyzeUploadedFile(e.target.files[0]);
   }
 });
-
-// ===== CALIBRATION UI =====
-function updateCalStatus() {
-  var statusEl = document.getElementById("calStatus");
-  if (!statusEl) return;
-  var hasCustom = false;
-  var parts = [];
-  for (var i = 0; i < 4; i++) {
-    if (_cvCalCustomRefs[i]) {
-      hasCustom = true;
-      parts.push('Val ' + i + ': rgb(' + _cvCalCustomRefs[i].r + ',' + _cvCalCustomRefs[i].g + ',' + _cvCalCustomRefs[i].b + ')');
-    }
+document.getElementById("camDoneBtn").addEventListener("click", function() {
+  if (cvReady && window._warpedBaseImg) {
+    remeasureAll();
   }
-  statusEl.innerHTML = parts.length > 0
-    ? 'Custom refs: ' + parts.join(' &middot; ') + ' &middot; <span style="color:var(--green);font-weight:500;">Calibrated</span>'
-    : 'References: <span style="color:var(--text-tertiary);">using default RGB colors</span>';
-}
+});
 
-function applyAndRedisplay() {
-  if (!_cvStripData) return;
-  var results = computeResults();
-  _cvResults = results;
-  window._scanResults = results;
-  var maxDist = 0;
-  for (var i = 0; i < results.length; i++) {
-    if (results[i].distance > maxDist) maxDist = results[i].distance;
-  }
-  drawOverlay(results, _cvStripData, maxDist);
-  showScanResults(results);
-  updateCalStatus();
-}
 
 // ===== DRAGGABLE ROI + CALIBRATION on warped canvas =====
 var _warpedCanvas = document.getElementById("warpedCanvas");
@@ -2619,55 +2533,57 @@ function getHandleIdx(canvas, x, y) {
   return -1;
 }
 
-// Re-measure a single pad at its current position and update _cvStripData
-function remeasurePad(idx, warpedMat) {
-  if (!_cvStripData || idx < 0 || idx >= _cvStripData.length) return;
-  var effRefs = _cvRefColors.slice();
-  for (var ri = 0; ri < 4; ri++) {
-    if (_cvCalCustomRefs[ri]) effRefs[ri] = _cvCalCustomRefs[ri];
+// Re-measure a single pad at its current position and update _cvStripData// Re-measure all pads with current drag offsets (Done button)
+function remeasureAll() {
+  var wCanvas = document.getElementById("warpedCanvas");
+  if (!wCanvas || !window._warpedBaseImg) return;
+  var wctx = wCanvas.getContext("2d");
+  wctx.putImageData(window._warpedBaseImg, 0, 0);
+  try {
+    var warpSrc = cv.imread(wCanvas);
+    var rawValues = [];
+    _cvStripRawPixels = null;
+    var effRefs = _cvRefColors.slice();
+    for (var i = 0; i < _qrScanRegions.length; i++) {
+      var region = _qrScanRegions[i];
+      var detectedQr = window._cvQrMap ? window._cvQrMap[i] : null;
+      var padR = padRectFromQR(region, i, detectedQr);
+      var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
+      var roi = warpSrc.roi(rect);
+      var padResult = measurePadValue(roi, effRefs);
+      var padIdx = getPadIdxFromQRText(region.name);
+      var row = Math.floor(padIdx / _cvCols);
+      var col = padIdx % _cvCols;
+      var rgb2 = new cv.Mat();
+      cv.cvtColor(roi, rgb2, cv.COLOR_RGBA2RGB);
+      var pixData = new Uint8Array(rgb2.data);
+      if (!_cvStripRawPixels) _cvStripRawPixels = [];
+      _cvStripRawPixels[i] = { data: pixData, w: rgb2.cols, h: rgb2.rows };
+      rgb2.delete();
+      rawValues.push({
+        name: region.padName, marker: region.marker, value: padResult.value,
+        avgR: padResult.avgR, avgG: padResult.avgG, avgB: padResult.avgB,
+        counts: padResult.counts, row: row, col: col,
+        qrRect: { x: padR.x, y: padR.y, w: padR.w, h: padR.h }
+      });
+    }
+    warpSrc.delete();
+    _cvStripData = rawValues;
+    var results = formatResults(rawValues);
+    _cvResults = results;
+    window._scanResults = results;
+    var maxDist = 0;
+    for (var i = 0; i < results.length; i++) {
+      if (results[i].distance > maxDist) maxDist = results[i].distance;
+    }
+    drawOverlay(results, rawValues, maxDist);
+    showScanResults(results);
+  } catch(e) {
+    console.warn("Remeasure error:", e);
   }
-  var region = _qrScanRegions[idx];
-  var padR = padRectFromQR(region, idx);
-  var rect = new cv.Rect(padR.x, padR.y, padR.w, padR.h);
-  var roi = warpedMat.roi(rect);
-  var padResult = measurePadValue(roi, effRefs);
-  // Save raw pixel data for recalibration
-  var rgb3 = new cv.Mat();
-  cv.cvtColor(roi, rgb3, cv.COLOR_RGBA2RGB);
-  if (!_cvStripRawPixels) _cvStripRawPixels = [];
-  _cvStripRawPixels[idx] = { data: new Uint8Array(rgb3.data), w: rgb3.cols, h: rgb3.rows };
-  rgb3.delete();
-  var padIdx = getPadIdxFromQRText(region.name);
-  _cvStripData[idx] = {
-    name: region.padName,
-    marker: region.marker,
-    value: padResult.value,
-    avgR: padResult.avgR,
-    avgG: padResult.avgG,
-    avgB: padResult.avgB,
-    counts: padResult.counts,
-    row: Math.floor(padIdx / _cvCols),
-    col: padIdx % _cvCols,
-    qrRect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h }
-  };
 }
 
-// Redraw after drag or calibration
-function recalcAndRedraw() {
-  if (!_cvStripData) return;
-  var results = computeResults();
-  _cvResults = results;
-  window._scanResults = results;
-  var maxDist = 0;
-  for (var i = 0; i < results.length; i++) {
-    if (results[i].distance > maxDist) maxDist = results[i].distance;
-  }
-  drawOverlay(results, _cvStripData, maxDist);
-  showScanResults(results);
-  updateCalStatus();
-}
-
-// --- Mousedown: start calibration click or pad drag ---
+// --- Mousedown: start pad drag ---
 _warpedCanvas.addEventListener("mousedown", function(e) {
   var c = canvasCoords(this, e);
   // Check if user grabbed a drag handle
@@ -2683,19 +2599,7 @@ _warpedCanvas.addEventListener("mousedown", function(e) {
     e.preventDefault();
     return;
   }
-  // Check if calibration mode is active — handle click
-  if (!_cvCalMode || !_cvStripData) return;
-  var idx = getROIIndexFromXY(this, c.x, c.y);
-  if (idx < 0 || idx >= _cvStripData.length) return;
-  if (_cvCalMode === 'neg') {
-    _cvCalCustomRefs[0] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
-  } else if (_cvCalMode === 'pos') {
-    _cvCalCustomRefs[3] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
-  }
-  _cvCalMode = null;
-  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
-  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  recalcAndRedraw();
+  return;
 });
 
 // --- Mousemove: update pad offset while dragging ---
@@ -2720,17 +2624,14 @@ document.addEventListener("mouseup", function(e) {
   if (!_dragState) return;
   var idx = _dragState.idx;
   _dragState = null;
-  // If offset is still zero, nothing moved
-  if (_cvPadOffsets[idx].dx === 0 && _cvPadOffsets[idx].dy === 0) return;
-  // Remeasure the dragged pad using the warped canvas pixel data
-  var wCanvas = document.getElementById('warpedCanvas');
-  // Restore clean warped image so overlay graphics don't corrupt pixel measurement
-  var wctx = wCanvas.getContext('2d');
-  if (window._warpedBaseImg) wctx.putImageData(window._warpedBaseImg, 0, 0);
-  var warpSrc = cv.imread(wCanvas);
-  remeasurePad(idx, warpSrc);
-  warpSrc.delete();
-  recalcAndRedraw();
+  // Just redraw overlay
+  if (_cvResults) {
+    var maxDist = 0;
+    for (var i = 0; i < _cvResults.length; i++) {
+      if (_cvResults[i].distance > maxDist) maxDist = _cvResults[i].distance;
+    }
+    drawOverlay(_cvResults, _cvStripData, maxDist);
+  }
 });
 
 // --- Touch equivalents ---
@@ -2749,18 +2650,7 @@ _warpedCanvas.addEventListener("touchstart", function(e) {
     e.preventDefault();
     return;
   }
-  if (!_cvCalMode || !_cvStripData) return;
-  var idx = getROIIndexFromXY(this, c.x, c.y);
-  if (idx < 0 || idx >= _cvStripData.length) return;
-  if (_cvCalMode === 'neg') {
-    _cvCalCustomRefs[0] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
-  } else if (_cvCalMode === 'pos') {
-    _cvCalCustomRefs[3] = { r: _cvStripData[idx].avgR, g: _cvStripData[idx].avgG, b: _cvStripData[idx].avgB };
-  }
-  _cvCalMode = null;
-  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
-  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  recalcAndRedraw();
+  return;
 }, {passive: false});
 
 document.addEventListener("touchmove", function(e) {
@@ -2782,40 +2672,22 @@ document.addEventListener("touchend", function(e) {
   if (!_dragState) return;
   var idx = _dragState.idx;
   _dragState = null;
-  if (_cvPadOffsets[idx].dx === 0 && _cvPadOffsets[idx].dy === 0) return;
-  var wCanvas = document.getElementById('warpedCanvas');
-  // Restore clean warped image so overlay graphics don't corrupt pixel measurement
-  var wctx = wCanvas.getContext('2d');
-  if (window._warpedBaseImg) wctx.putImageData(window._warpedBaseImg, 0, 0);
-  var warpSrc = cv.imread(wCanvas);
-  remeasurePad(idx, warpSrc);
-  warpSrc.delete();
-  recalcAndRedraw();
+  // Just redraw overlay with new offsets
+  if (_cvResults) {
+    var maxDist = 0;
+    for (var i = 0; i < _cvResults.length; i++) {
+      if (_cvResults[i].distance > maxDist) maxDist = _cvResults[i].distance;
+    }
+    drawOverlay(_cvResults, _cvStripData, maxDist);
+  }
 });
 
 // --- Calibration buttons ---
-document.getElementById("calNegBtn").addEventListener("click", function() {
-  if (!_cvStripData) return;
-  _cvCalMode = (_cvCalMode === 'neg') ? null : 'neg';
-  this.style.borderColor = _cvCalMode === 'neg' ? 'var(--orange)' : 'var(--card-border)';
-  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-});
 
-document.getElementById("calPosBtn").addEventListener("click", function() {
-  if (!_cvStripData) return;
-  _cvCalMode = (_cvCalMode === 'pos') ? null : 'pos';
-  this.style.borderColor = _cvCalMode === 'pos' ? 'var(--red)' : 'var(--card-border)';
-  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
-});
 
-document.getElementById("calResetBtn").addEventListener("click", function() {
-  for (var i = 0; i < 4; i++) _cvCalCustomRefs[i] = null;
-  _cvCalMode = null;
-  document.getElementById("calNegBtn").style.borderColor = 'var(--card-border)';
-  document.getElementById("calPosBtn").style.borderColor = 'var(--card-border)';
-  if (_cvStripData) recalcAndRedraw();
-  updateCalStatus();
-});
+
+
+
 </script>
 </body>
 </html>
